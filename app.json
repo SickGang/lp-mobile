@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "CarWash Booking",
+    "slug": "carwash-booking",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#4A90E2"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.carwash.booking"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#4A90E2"
+      },
+      "package": "com.carwash.booking"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "apiUrl": "https://carwashapi-production-8b7d.up.railway.app",
+      "localApiUrl": "http://192.168.0.103:3000",
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    },
+    "plugins": ["expo-router"],
+    "scheme": "carwash"
+  }
+}
