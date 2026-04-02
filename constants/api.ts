@@ -1,4 +1,4 @@
-﻿import Constants from "expo-constants";
+import Constants from "expo-constants";
 
 const extra = Constants.expoConfig?.extra as
   | { apiUrl?: string; localApiUrl?: string }
@@ -6,5 +6,4 @@ const extra = Constants.expoConfig?.extra as
 
 export const API_URL = __DEV__
   ? extra?.localApiUrl || "http://localhost:3000"
-  : extra?.apiUrl || "https://carwashapi-production-8b7d.up.railway.app";
-
+  : extra?.apiUrl || "https://sickgang-lp-api-b7b5.twc1.net";

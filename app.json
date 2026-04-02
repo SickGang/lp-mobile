@@ -24,7 +24,7 @@
       "bundler": "metro"
     },
     "extra": {
-      "apiUrl": "https://carwashapi-production-8b7d.up.railway.app",
+      "apiUrl": "https://sickgang-lp-api-b7b5.twc1.net",
       "localApiUrl": "http://192.168.0.103:3000",
       "eas": {
         "projectId": "your-project-id"
