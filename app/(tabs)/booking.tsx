@@ -269,7 +269,12 @@ export default function BookingScreen() {
         <View style={styles.iconButtons}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => router.push("/notifications")}
+            onPress={() =>
+              router.push({
+                pathname: "/notifications",
+                params: { from: "/booking" },
+              })
+            }
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
           </TouchableOpacity>

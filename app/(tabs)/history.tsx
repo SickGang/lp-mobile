@@ -162,7 +162,12 @@ export default function HistoryScreen() {
         <View style={styles.iconButtons}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => router.push("/notifications")}
+            onPress={() =>
+              router.push({
+                pathname: "/notifications",
+                params: { from: "/history" },
+              })
+            }
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
           </TouchableOpacity>

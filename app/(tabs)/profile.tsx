@@ -5,16 +5,22 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, Link } from "expo-router";
 import { useAuth } from "../context/AuthContext";
 import Colors from "../../constants/colors";
+import axios from "axios";
+import { API_URL } from "../../constants/api";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { logout, user } = useAuth();
+  const { logout, user, token } = useAuth();
+  const supportPhone = "+79990000000";
+  const supportPhoneLabel = "+7 (999) 000-00-00";
+  const supportTelegram = "lp_support_mock";
 
   const handleLogout = async () => {
     Alert.alert("Выход", "Вы уверены, что хотите выйти из аккаунта?", [
@@ -33,6 +39,39 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleDeleteProfile = () => {
+    Alert.alert(
+      "Удалить профиль",
+      "Вы уверены? Профиль и связанные данные будут удалены. Это действие нельзя отменить.",
+      [
+        { text: "Отмена", style: "cancel" },
+        {
+          text: "Удалить",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (!token) {
+                Alert.alert("Ошибка", "Необходима авторизация");
+                return;
+              }
+
+              await axios.delete(`${API_URL}/users/me`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              await logout();
+              router.replace("/login");
+            } catch (error: any) {
+              const message =
+                error?.response?.data?.message ||
+                "Не удалось удалить профиль. Попробуйте позже.";
+              Alert.alert("Ошибка", message);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeContainer} edges={["top"]}>
       <ScrollView style={styles.container}>
@@ -45,7 +84,7 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.menu}>
-        <Link href="/cars" asChild>
+        <Link href={{ pathname: "/cars", params: { from: "/profile" } }} asChild>
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuIconContainer}>
               <Ionicons name="car-sport-outline" size={22} color="#000000" />
@@ -65,6 +104,22 @@ export default function ProfileScreen() {
           <Text style={styles.menuText}>О приложении</Text>
         </TouchableOpacity>
 
+        <View style={styles.supportCard}>
+          <Text style={styles.supportTitle}>Поддержка</Text>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(`tel:${supportPhone}`)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.supportLink}>Телефон: {supportPhoneLabel}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(`https://t.me/${supportTelegram}`)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.supportLink}>Telegram: @{supportTelegram}</Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons
             name="log-out-outline"
@@ -73,6 +128,19 @@ export default function ProfileScreen() {
             style={{ marginRight: 8 }}
           />
           <Text style={styles.logoutButtonText}>Выйти из аккаунта</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.deleteProfileButton}
+          onPress={handleDeleteProfile}
+        >
+          <Ionicons
+            name="trash-outline"
+            size={20}
+            color="#FF3B30"
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.deleteProfileButtonText}>Удалить профиль</Text>
         </TouchableOpacity>
       </View>
 
@@ -150,6 +218,28 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontWeight: "500",
   },
+  supportCard: {
+    backgroundColor: "#2C2C2E",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  supportTitle: {
+    fontSize: 16,
+    color: "#ffffff",
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  supportText: {
+    fontSize: 14,
+    color: "#cccccc",
+    marginBottom: 4,
+  },
+  supportLink: {
+    fontSize: 14,
+    color: Colors.warning,
+    marginBottom: 8,
+  },
   logoutButton: {
     backgroundColor: "#f5f5f5",
     paddingVertical: 16,
@@ -163,6 +253,22 @@ const styles = StyleSheet.create({
   },
   logoutButtonText: {
     color: "#000000",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  deleteProfileButton: {
+    backgroundColor: "#2C2C2E",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#4A4A4A",
+  },
+  deleteProfileButtonText: {
+    color: "#FF3B30",
     fontSize: 16,
     fontWeight: "600",
   },

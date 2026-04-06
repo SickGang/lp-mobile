@@ -210,7 +210,12 @@ export default function ServicesSelectionScreen() {
         <View style={styles.headerButtons}>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => router.push("/notifications")}
+            onPress={() =>
+              router.push({
+                pathname: "/notifications",
+                params: { from: "/services-selection" },
+              })
+            }
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
           </TouchableOpacity>
@@ -378,7 +383,10 @@ export default function ServicesSelectionScreen() {
               style={styles.addCarButton}
               onPress={() => {
                 setCarModalVisible(false);
-                router.push("/cars");
+                router.push({
+                  pathname: "/cars",
+                  params: { from: "/services-selection" },
+                });
               }}
             >
               <Ionicons name="add-circle-outline" size={24} color="#D9E57F" />

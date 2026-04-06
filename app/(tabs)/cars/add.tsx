@@ -10,8 +10,6 @@ import {
   Alert,
   FlatList,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -200,7 +198,11 @@ export default function AddCarScreen() {
 
     const success = await addCar(newCar);
     if (success) {
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/cars");
+      }
     }
   };
 
@@ -216,27 +218,33 @@ export default function AddCarScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            router.replace("/cars");
+          }}
+        >
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Добавить автомобиль</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 56 : 0}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(120, insets.bottom + 80) },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: Math.max(32, insets.bottom + 24) },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Марка автомобиля</Text>
             <TouchableOpacity
@@ -301,8 +309,7 @@ export default function AddCarScreen() {
           </TouchableOpacity>
 
           <View style={styles.bottomPadding} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </ScrollView>
 
       <Modal
         animationType="slide"
@@ -341,7 +348,6 @@ export default function AddCarScreen() {
                 value={searchBrand}
                 onChangeText={setSearchBrand}
                 placeholderTextColor="#666666"
-                autoFocus
               />
               {searchBrand.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchBrand("")}>
@@ -420,7 +426,6 @@ export default function AddCarScreen() {
                 value={searchModel}
                 onChangeText={setSearchModel}
                 placeholderTextColor="#666666"
-                autoFocus
               />
               {searchModel.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchModel("")}>
@@ -471,9 +476,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#17181C",
-  },
-  flex: {
-    flex: 1,
   },
   scroll: {
     flex: 1,

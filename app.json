@@ -3,6 +3,7 @@
     "name": "CarWash Booking",
     "slug": "carwash-booking",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -12,20 +13,22 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.carwash.booking"
+      "bundleIdentifier": "com.carwash.booking",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#4A90E2"
       },
-      "package": "com.carwash.booking"
+      "package": "com.carwash.booking",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro"
     },
     "extra": {
       "apiUrl": "https://sickgang-lp-api-b7b5.twc1.net",
-      "localApiUrl": "http://192.168.0.103:3000",
+      "localApiUrl": "http://192.168.0.106:3000",
       "eas": {
         "projectId": "your-project-id"
       }

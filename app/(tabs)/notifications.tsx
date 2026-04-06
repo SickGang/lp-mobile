@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import Colors from "../../constants/colors";
 
 interface Notification {
@@ -20,6 +20,7 @@ interface Notification {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   
   // Пока уведомления захардкодим, позже можно будет загружать с API
   const notifications: Notification[] = [];
@@ -30,7 +31,17 @@ export default function NotificationsScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            if (typeof from === "string" && from.length > 0) {
+              router.replace(from as any);
+              return;
+            }
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            router.replace("/");
+          }}
         >
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>

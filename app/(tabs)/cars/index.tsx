@@ -5,14 +5,16 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  PanResponder,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useCars } from "../../context/CarsContext";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 export default function CarsListScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { cars, selectedCar, selectCar, removeCar } = useCars();
 
   const handleDeleteCar = (id: number) => {
@@ -31,6 +33,10 @@ export default function CarsListScreen() {
   };
 
   const handleBackPress = () => {
+    if (typeof from === "string" && from.length > 0) {
+      router.replace(from as any);
+      return;
+    }
     if (router.canGoBack()) {
       router.back();
       return;
@@ -38,8 +44,24 @@ export default function CarsListScreen() {
     router.replace("/profile");
   };
 
+  const swipeBackResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gestureState) =>
+      gestureState.dx > 14 &&
+      Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2,
+    onPanResponderRelease: (_, gestureState) => {
+      const isRightSwipe = gestureState.dx > 80 && gestureState.vx > 0;
+      if (isRightSwipe) {
+        handleBackPress();
+      }
+    },
+  });
+
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView
+      style={styles.container}
+      edges={["top"]}
+      {...swipeBackResponder.panHandlers}
+    >
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButton} onPress={handleBackPress}>
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
@@ -80,7 +102,6 @@ export default function CarsListScreen() {
                   ]}
                   onPress={() => {
                     selectCar(car);
-                    router.push("/services-selection");
                   }}
                 >
                   <View style={styles.carIcon}>
@@ -108,7 +129,12 @@ export default function CarsListScreen() {
 
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => router.push("/cars/add")}
+          onPress={() =>
+            router.push({
+              pathname: "/cars/add",
+              params: { from: typeof from === "string" ? from : "/cars" },
+            })
+          }
         >
           <Ionicons name="add-circle-outline" size={24} color="#D9E57F" />
           <Text style={styles.addButtonText}>Добавить автомобиль</Text>

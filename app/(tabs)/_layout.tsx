@@ -1,12 +1,17 @@
-import { Tabs } from "expo-router";
+import { Tabs, useSegments } from "expo-router";
 import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Text } from "react-native";
 
 /**
  * Табы живут в группе (tabs), корень приложения — Stack в app/_layout.tsx.
  * Так не переключается тип корневого навигатора после логина (стабильнее в Expo Go).
  */
 export default function TabsLayout() {
+  const segments = useSegments();
+  const current = segments[segments.length - 1];
+  const bookingFlowActive = current === "booking" || current === "services-selection";
+
   return (
     <Tabs
       screenOptions={{
@@ -68,12 +73,21 @@ export default function TabsLayout() {
         options={{
           title: "Записаться",
           headerShown: false,
-          tabBarLabel: "Записаться",
-          tabBarIcon: ({ focused, color }) => (
+          tabBarLabel: ({ focused }) => (
+            <Text
+              style={[
+                styles.tabBarLabel,
+                { color: focused || bookingFlowActive ? "#D9E57F" : "#FFFFFF" },
+              ]}
+            >
+              Записаться
+            </Text>
+          ),
+          tabBarIcon: ({ focused }) => (
             <Ionicons
-              name={focused ? "calendar" : "calendar-outline"}
+              name={focused || bookingFlowActive ? "calendar" : "calendar-outline"}
               size={24}
-              color={color}
+              color={focused || bookingFlowActive ? "#D9E57F" : "#FFFFFF"}
             />
           ),
         }}
@@ -115,19 +129,22 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
-    height: 65,
-    backgroundColor: "#1C1C1E",
-    borderRadius: 40,
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
-    paddingBottom: 5,
-    paddingTop: 5,
-    borderWidth: 0,
-    borderTopWidth: 0,
+    marginHorizontal: 32,
+    bottom: 26,
+    height: 72,
+    backgroundColor: "rgba(22, 24, 29, 0.72)",
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.14)",
+    borderTopWidth: 1,
+    paddingBottom: 8,
+    paddingTop: 8,
+    paddingHorizontal: 6,
+    shadowColor: "#000000",
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
   },
   tabBarLabel: {
     fontSize: 11,
