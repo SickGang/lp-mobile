@@ -33,12 +33,16 @@ function updateAppJson(ipAddress) {
     appJson.expo.extra.originalApiUrl = appJson.expo.extra.apiUrl;
   }
   
-  // Обновляем apiUrl для iOS тестирования
-  appJson.expo.extra.apiUrl = `http://${ipAddress}:3000`;
+  // Обновляем URL для локального iOS тестирования
+  // localApiUrl используется приложением в __DEV__,
+  // apiUrl обновляем тоже для обратной совместимости.
+  const localUrl = `http://${ipAddress}:3000`;
+  appJson.expo.extra.localApiUrl = localUrl;
+  appJson.expo.extra.apiUrl = localUrl;
   
   fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2));
   
-  return appJson.expo.extra.apiUrl;
+  return localUrl;
 }
 
 function main() {

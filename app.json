@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "CarWash Booking",
-    "slug": "carwash-booking",
+    "name": "Lp Detailing",
+    "slug": "lp-detailing",
     "version": "1.0.0",
     "runtimeVersion": "1.0.0",
     "orientation": "portrait",
@@ -10,17 +10,19 @@
       "resizeMode": "contain",
       "backgroundColor": "#4A90E2"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.carwash.booking",
+      "bundleIdentifier": "com.pavellavrenchuk.lpdetailing",
       "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#4A90E2"
       },
-      "package": "com.carwash.booking",
+      "package": "com.pavellavrenchuk.lpdetailing",
       "versionCode": 1
     },
     "web": {
@@ -29,11 +31,15 @@
     "extra": {
       "apiUrl": "https://sickgang-lp-api-b7b5.twc1.net",
       "localApiUrl": "http://192.168.0.106:3000",
+      "router": {},
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "76cab969-007a-437b-8c5e-2b5458a78159"
       }
     },
-    "plugins": ["expo-router"],
-    "scheme": "carwash"
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "lpdetailing",
+    "owner": "sickgang"
   }
 }
