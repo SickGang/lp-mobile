@@ -91,7 +91,9 @@ export function CarsProvider({ children }: { children: React.ReactNode }) {
     try {
       const saved = await AsyncStorage.getItem("selectedCar");
       if (saved) {
-        setSelectedCar(JSON.parse(saved));
+        const parsedCar = JSON.parse(saved) as Car;
+        // Не перетираем выбор, который пользователь только что сделал в текущей сессии.
+        setSelectedCar((current) => current ?? parsedCar);
       }
     } catch (error) {
       console.error("Error loading selected car:", error);
