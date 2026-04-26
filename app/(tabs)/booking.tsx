@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Platform,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,10 +18,54 @@ import { useCars } from "../context/CarsContext";
 import { useBooking } from "../context/BookingContext";
 import { useAuth } from "../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Calendar } from "react-native-calendars";
+import { Calendar, LocaleConfig } from "react-native-calendars";
+import * as DeviceCalendar from "expo-calendar";
 import axios from "axios";
 import { API_URL } from "../../constants/api";
 import type { Car } from "../context/CarsContext";
+
+LocaleConfig.locales.ru = {
+  monthNames: [
+    "Январь",
+    "Февраль",
+    "Март",
+    "Апрель",
+    "Май",
+    "Июнь",
+    "Июль",
+    "Август",
+    "Сентябрь",
+    "Октябрь",
+    "Ноябрь",
+    "Декабрь",
+  ],
+  monthNamesShort: [
+    "Янв.",
+    "Февр.",
+    "Март",
+    "Апр.",
+    "Май",
+    "Июнь",
+    "Июль",
+    "Авг.",
+    "Сент.",
+    "Окт.",
+    "Нояб.",
+    "Дек.",
+  ],
+  dayNames: [
+    "Воскресенье",
+    "Понедельник",
+    "Вторник",
+    "Среда",
+    "Четверг",
+    "Пятница",
+    "Суббота",
+  ],
+  dayNamesShort: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+  today: "Сегодня",
+};
+LocaleConfig.defaultLocale = "ru";
 
 interface TimeSlot {
   startTime: string;
@@ -51,10 +97,14 @@ export default function BookingScreen() {
     }
   }, [resolveCarForBooking, selectedCar, selectCar]);
 
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
+  const formatDateToYMD = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
+
+  const getTodayDate = () => formatDateToYMD(new Date());
 
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [selectedTime, setSelectedTime] = useState("");
@@ -63,6 +113,95 @@ export default function BookingScreen() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [creatingBooking, setCreatingBooking] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [nowTimestamp, setNowTimestamp] = useState(Date.now());
+  const [bookingComment, setBookingComment] = useState("");
+  const skipAutoRedirectRef = useRef(false);
+
+  const parseLocalDate = (dateString: string) => {
+    const [year, month, day] = dateString.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const parseLocalDateTime = (dateString: string, timeString: string) => {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const [hours, minutes] = timeString.split(":").map(Number);
+    return new Date(year, month - 1, day, hours, minutes, 0, 0);
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowTimestamp(Date.now());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getDisplaySlots = useMemo(() => {
+    const isToday = selectedDate === getTodayDate();
+    if (!isToday) {
+      return timeSlots;
+    }
+
+    return timeSlots.map((slot) => {
+      const slotStart = parseLocalDateTime(selectedDate, slot.startTime);
+      const isPastOrStarted = slotStart.getTime() <= nowTimestamp;
+      return {
+        ...slot,
+        available: slot.available && !isPastOrStarted,
+      };
+    });
+  }, [timeSlots, selectedDate, nowTimestamp]);
+
+  const addBookingToDeviceCalendar = async (car: Car) => {
+    try {
+      const permission = await DeviceCalendar.requestCalendarPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert(
+          "Доступ к календарю запрещен",
+          "Вы можете выдать доступ к календарю в настройках устройства."
+        );
+        return;
+      }
+
+      const calendars = await DeviceCalendar.getCalendarsAsync(
+        DeviceCalendar.EntityTypes.EVENT
+      );
+      const writableCalendar = calendars.find((calendar) => calendar.allowsModifications);
+
+      if (!writableCalendar) {
+        Alert.alert("Ошибка", "Не удалось найти доступный календарь на устройстве.");
+        return;
+      }
+
+      const selectedSlot = timeSlots.find((slot) => slot.startTime === selectedTime);
+      const startDate = parseLocalDateTime(selectedDate, selectedTime);
+      const endDate = selectedSlot
+        ? parseLocalDateTime(selectedDate, selectedSlot.endTime)
+        : new Date(startDate.getTime() + 60 * 60 * 1000);
+
+      const servicesText = selectedServices.map((service) => service.name).join(", ");
+      const carName = [car.brand, car.model].filter(Boolean).join(" ");
+
+      await DeviceCalendar.createEventAsync(writableCalendar.id, {
+        title: "Запись в LP Detailing",
+        startDate,
+        endDate,
+        notes: `Автомобиль: ${carName}\nУслуги: ${servicesText}`,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+
+      Alert.alert("Готово", "Запись добавлена в календарь устройства.");
+    } catch (error) {
+      console.error("Ошибка добавления в календарь:", error);
+      if (Platform.OS === "ios") {
+        Alert.alert(
+          "Ошибка",
+          "Не удалось добавить запись в календарь. Проверьте доступ к календарю в настройках iPhone."
+        );
+      } else {
+        Alert.alert("Ошибка", "Не удалось добавить запись в календарь.");
+      }
+    }
+  };
 
   // Загружаем слоты при изменении даты
   useEffect(() => {
@@ -72,9 +211,19 @@ export default function BookingScreen() {
   // При каждом заходе на экран: проверяем авто и либо редиректим, либо сбрасываем форму
   useFocusEffect(
     useCallback(() => {
+      // Сбрасываем защитный флаг только когда в booking снова есть выбранные услуги.
+      if (selectedServices.length > 0) {
+        skipAutoRedirectRef.current = false;
+      }
+
       // Если есть автомобили НО услуги НЕ выбраны - переходим на выбор услуг
       // Если услуги уже выбраны - значит мы в процессе записи, остаемся здесь
-      if (!loading && cars.length > 0 && selectedServices.length === 0) {
+      if (
+        !loading &&
+        cars.length > 0 &&
+        selectedServices.length === 0 &&
+        !skipAutoRedirectRef.current
+      ) {
         setRedirecting(true);
         router.push("/services-selection");
         return;
@@ -85,6 +234,7 @@ export default function BookingScreen() {
       const today = getTodayDate();
       setSelectedDate(today);
       setSelectedTime("");
+      setBookingComment("");
       loadSlotsForDate(today);
     }, [loading, cars, selectedServices])
   );
@@ -149,6 +299,7 @@ export default function BookingScreen() {
           carId: car.id,
           serviceIds: selectedServices.map((s) => s.id),
           startTime: startTime.toISOString(),
+          notes: bookingComment.trim() ? bookingComment.trim() : undefined,
         },
         {
           headers: {
@@ -157,19 +308,27 @@ export default function BookingScreen() {
         }
       );
 
-      Alert.alert(
-        "Успешно!",
-        "Ваше бронирование подтверждено",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              clearBooking();
-              router.push("/history");
-            },
+      Alert.alert("Успешно!", "Ваше бронирование подтверждено. Добавить в календарь?", [
+        {
+          text: "Не добавлять",
+          style: "cancel",
+          onPress: () => {
+            skipAutoRedirectRef.current = true;
+            clearBooking();
+            router.replace("/history");
           },
-        ]
-      );
+        },
+        {
+          text: "Добавить",
+          onPress: () => {
+            skipAutoRedirectRef.current = true;
+            void addBookingToDeviceCalendar(car).finally(() => {
+              clearBooking();
+              router.replace("/history");
+            });
+          },
+        },
+      ]);
     } catch (error) {
       console.error("Ошибка создания бронирования:", error);
       if (axios.isAxiosError(error)) {
@@ -192,14 +351,14 @@ export default function BookingScreen() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = parseLocalDate(dateString);
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     if (dateString === getTodayDate()) {
       return "Сегодня";
-    } else if (dateString === tomorrow.toISOString().split("T")[0]) {
+    } else if (dateString === formatDateToYMD(tomorrow)) {
       return "Завтра";
     } else {
       return date.toLocaleDateString("ru-RU", {
@@ -211,7 +370,7 @@ export default function BookingScreen() {
   };
 
   const getFullDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = parseLocalDate(dateString);
     return date.toLocaleDateString("ru-RU", {
       day: "numeric",
       month: "long",
@@ -257,16 +416,16 @@ export default function BookingScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header с профилем */}
       <View style={styles.header}>
-        <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={32} color="#ffffff" />
-          </View>
-          <View style={styles.greetingContainer}>
-            <Text style={styles.userName}>{user?.name || user?.username || "Пользователь"}</Text>
-            <Text style={styles.greeting}>С возвращением!</Text>
-          </View>
-        </View>
-        <View style={styles.iconButtons}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => router.push("/services-selection")}
+        >
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>Выбор даты</Text>
+
+        <View style={styles.headerButtons}>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() =>
@@ -278,15 +437,10 @@ export default function BookingScreen() {
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="settings-outline" size={24} color="#ffffff" />
-          </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView style={styles.content}>
-        <Text style={styles.mainTitle}>Записаться</Text>
-
         {/* Выберите дату */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Выберите дату</Text>
@@ -310,7 +464,7 @@ export default function BookingScreen() {
               <ActivityIndicator size="large" color="#D9E57F" />
               <Text style={styles.loadingText}>Загрузка слотов...</Text>
             </View>
-          ) : timeSlots.length === 0 ? (
+          ) : getDisplaySlots.length === 0 ? (
             <View style={styles.noSlots}>
               <Ionicons name="close-circle-outline" size={48} color="#666666" />
               <Text style={styles.noSlotsText}>Нет доступных слотов</Text>
@@ -320,7 +474,7 @@ export default function BookingScreen() {
             </View>
           ) : (
             <View style={styles.timeSlotsGrid}>
-              {timeSlots.map((slot, index) => (
+              {getDisplaySlots.map((slot, index) => (
                 <TouchableOpacity
                   key={index}
                   style={[
@@ -344,6 +498,21 @@ export default function BookingScreen() {
               ))}
             </View>
           )}
+        </View>
+
+        {/* Кнопка подтверждения */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Комментарий: (необязательно)</Text>
+          <TextInput
+            style={styles.commentInput}
+            placeholder="Например: не трогать вещи, не двигать сидения..."
+            placeholderTextColor="#666666"
+            multiline
+            value={bookingComment}
+            onChangeText={setBookingComment}
+            maxLength={500}
+            textAlignVertical="top"
+          />
         </View>
 
         {/* Кнопка подтверждения */}
@@ -383,6 +552,7 @@ export default function BookingScreen() {
             <Calendar
               minDate={getTodayDate()}
               current={selectedDate}
+              firstDay={1}
               onDayPress={handleDayPress}
               markedDates={{
                 [selectedDate]: {
@@ -427,59 +597,33 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#17181C",
   },
-  profileSection: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#3A3A3C",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  greetingContainer: {
-    justifyContent: "center",
-  },
-  userName: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: "600",
     color: "#ffffff",
-    marginBottom: 2,
+    flex: 1,
+    textAlign: "center",
+    marginHorizontal: 12,
   },
-  greeting: {
-    fontSize: 14,
-    color: "#999999",
-  },
-  iconButtons: {
+  headerButtons: {
     flexDirection: "row",
-    gap: 12,
   },
   iconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     justifyContent: "center",
     alignItems: "center",
   },
   content: {
     flex: 1,
-  },
-  mainTitle: {
-    fontSize: 36,
-    fontWeight: "bold",
-    color: "#ffffff",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 24,
   },
   section: {
     paddingHorizontal: 20,
@@ -513,6 +657,16 @@ const styles = StyleSheet.create({
   dateSubLabel: {
     fontSize: 14,
     color: "#999999",
+  },
+  commentInput: {
+    minHeight: 100,
+    backgroundColor: "#2C2C2E",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#3A3A3C",
+    padding: 14,
+    color: "#ffffff",
+    fontSize: 15,
   },
   loadingSlots: {
     alignItems: "center",

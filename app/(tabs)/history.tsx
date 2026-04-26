@@ -33,7 +33,8 @@ interface Booking {
   }[];
   car: {
     id: number;
-    licensePlate: string;
+    licensePlate: string | null;
+    hasNoPlate: boolean;
   };
 }
 
@@ -42,6 +43,7 @@ export default function HistoryScreen() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
 
   // Перезагружаем бронирования при возврате на экран
   useFocusEffect(
@@ -153,7 +155,15 @@ export default function HistoryScreen() {
       {/* Шапка с профилем */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
-          <Image source={require("../../assets/logo.png")} style={styles.avatar} />
+          <Image
+            source={
+              user?.photoUrl && !avatarLoadError
+                ? { uri: user.photoUrl }
+                : require("../../assets/logo.png")
+            }
+            style={styles.avatar}
+            onError={() => setAvatarLoadError(true)}
+          />
           <View style={styles.greetingContainer}>
             <Text style={styles.userName}>{user?.name || user?.username || "Пользователь"}</Text>
             <Text style={styles.greeting}>С возвращением!</Text>
@@ -170,9 +180,6 @@ export default function HistoryScreen() {
             }
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="settings-outline" size={24} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </View>

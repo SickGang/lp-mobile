@@ -53,6 +53,9 @@ export default function ServicesSelectionScreen() {
 
   const [categories, setCategories] = useState<Category[]>([]);
 
+  const getCarPlateLabel = (car: { hasNoPlate: boolean; licensePlate: string | null }) =>
+    car.hasNoPlate || !car.licensePlate ? "Без номера" : car.licensePlate;
+
   // Загружаем услуги из API при монтировании
   useEffect(() => {
     loadServices();
@@ -219,9 +222,6 @@ export default function ServicesSelectionScreen() {
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="settings-outline" size={24} color="#ffffff" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -232,7 +232,7 @@ export default function ServicesSelectionScreen() {
       >
         <Ionicons name="car-sport" size={24} color="#ffffff" />
         <Text style={styles.carInfoText}>
-          {selectedCar?.licensePlate || "Выберите автомобиль"}
+          {selectedCar ? getCarPlateLabel(selectedCar) : "Выберите автомобиль"}
         </Text>
         <Ionicons name="chevron-down" size={24} color="#ffffff" />
       </TouchableOpacity>
@@ -303,25 +303,20 @@ export default function ServicesSelectionScreen() {
           </>
         )}
 
+        {getSelectedServices().length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.totalContainer}>
+              <Text style={styles.totalLabel}>Итого:</Text>
+              <Text style={styles.totalPrice}>{getTotalPrice()} ₽</Text>
+            </View>
+            <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+              <Text style={styles.continueButtonText}>Продолжить</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.bottomPadding} />
       </ScrollView>
-
-      {/* Итоговая панель */}
-      {getSelectedServices().length > 0 && (
-        <View style={styles.footer}>
-          <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Итого:</Text>
-            <Text style={styles.totalPrice}>{getTotalPrice()} ₽</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.continueButton}
-            onPress={handleContinue}
-          >
-            <Text style={styles.continueButtonText}>Продолжить</Text>
-            <Ionicons name="arrow-forward" size={20} color="#17181C" />
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* Модальное окно выбора автомобиля */}
       <Modal
@@ -365,7 +360,7 @@ export default function ServicesSelectionScreen() {
                     <View style={styles.carItemInfo}>
                       <Ionicons name="car-sport" size={24} color="#ffffff" />
                       <View style={styles.carItemDetails}>
-                        <Text style={styles.carItemPlate}>{car.licensePlate}</Text>
+                        <Text style={styles.carItemPlate}>{getCarPlateLabel(car)}</Text>
                         <Text style={styles.carItemModel}>
                           {car.brand} {car.model}
                         </Text>
@@ -559,12 +554,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#ffffff",
   },
-  footer: {
-    backgroundColor: "#2C2C2E",
-    borderTopWidth: 1,
-    borderTopColor: "#3A3A3C",
-    padding: 16,
-    paddingBottom: 100,
+  section: {
+    paddingHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 12,
   },
   totalContainer: {
     flexDirection: "row",

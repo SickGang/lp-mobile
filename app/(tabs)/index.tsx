@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   View,
   Text,
@@ -5,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
@@ -18,6 +20,12 @@ export default function HomeScreen() {
   const router = useRouter();
   const { cars, loading } = useCars();
   const { user } = useAuth();
+  const defaultAvatar = require("../../assets/logo.png") as ImageSourcePropType;
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
+
+  const avatarSource = user?.photoUrl && !avatarLoadError
+    ? { uri: user.photoUrl }
+    : defaultAvatar;
 
   const handleBookingClick = () => {
     // Всегда переходим на /booking
@@ -32,7 +40,11 @@ export default function HomeScreen() {
       {/* Шапка с профилем */}
       <View style={styles.topBar}>
         <View style={styles.profileSection}>
-          <Image source={require("../../assets/logo.png")} style={styles.avatar} />
+          <Image
+            source={avatarSource}
+            style={styles.avatar}
+            onError={() => setAvatarLoadError(true)}
+          />
           <View style={styles.greetingContainer}>
             <Text style={styles.userName}>{user?.name || user?.username || "Пользователь"}</Text>
             <Text style={styles.greeting}>С возвращением!</Text>
@@ -49,9 +61,6 @@ export default function HomeScreen() {
             }
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="settings-outline" size={24} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </View>

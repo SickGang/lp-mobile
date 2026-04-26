@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { API_URL } from "../../constants/api";
 
 interface User {
   id: number;
   phone?: string;
   name?: string;
   username?: string;
+  photoUrl?: string | null;
 }
 
 interface AuthContextType {
@@ -37,9 +40,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (savedToken) {
         setToken(savedToken);
         setIsAuthenticated(true);
-        
+
         if (savedUser) {
-          setUser(JSON.parse(savedUser));
+          const parsedUser = JSON.parse(savedUser) as User;
+          setUser(parsedUser);
+
+          // Обновляем профиль с бэка, чтобы подтянуть актуальный photoUrl.
+          try {
+            const meResponse = await axios.get(`${API_URL}/users/me`, {
+              headers: {
+                Authorization: `Bearer ${savedToken}`,
+              },
+            });
+
+            const me = meResponse.data as {
+              id: number;
+              phone?: string | null;
+              name?: string | null;
+              username?: string | null;
+              photoUrl?: string | null;
+            };
+
+            const refreshedUser: User = {
+              id: me.id,
+              phone: me.phone ?? undefined,
+              name: me.name ?? undefined,
+              username: me.username ?? undefined,
+              photoUrl: me.photoUrl ?? null,
+            };
+
+            await AsyncStorage.setItem("user_data", JSON.stringify(refreshedUser));
+            setUser(refreshedUser);
+          } catch (refreshError) {
+            console.error("Error refreshing user profile:", refreshError);
+          }
         }
       }
     } catch (error) {

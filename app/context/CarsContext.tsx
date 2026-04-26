@@ -10,17 +10,25 @@ export interface Car {
   id: number;
   brand: string;
   model: string;
-  licensePlate: string;
+  licensePlate: string | null;
+  hasNoPlate: boolean;
   userId?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface CreateCarInput {
+  brand: string;
+  model: string;
+  hasNoPlate: boolean;
+  licensePlate?: string;
 }
 
 interface CarsContextType {
   cars: Car[];
   selectedCar: Car | null;
   selectCar: (car: Car) => void;
-  addCar: (car: Omit<Car, "id">) => Promise<boolean>;
+  addCar: (car: CreateCarInput) => Promise<boolean>;
   removeCar: (id: number) => Promise<void>;
   loadCars: () => Promise<void>;
   loading: boolean;
@@ -90,7 +98,7 @@ export function CarsProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addCar = async (carData: Omit<Car, "id">): Promise<boolean> => {
+  const addCar = async (carData: CreateCarInput): Promise<boolean> => {
     try {
       const token = await AsyncStorage.getItem("auth_token");
       if (!token) {

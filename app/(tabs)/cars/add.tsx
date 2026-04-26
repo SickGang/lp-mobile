@@ -10,6 +10,7 @@ import {
   Alert,
   FlatList,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -52,6 +53,7 @@ export default function AddCarScreen() {
   const [model, setModel] = useState("");
   const [modelId, setModelId] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
+  const [hasNoPlate, setHasNoPlate] = useState(false);
   const [searchBrand, setSearchBrand] = useState("");
   const [searchModel, setSearchModel] = useState("");
 
@@ -181,19 +183,22 @@ export default function AddCarScreen() {
       Alert.alert("Ошибка", "Выберите модель автомобиля");
       return;
     }
-    if (!licensePlate.trim()) {
-      Alert.alert("Ошибка", "Введите гос. номер");
-      return;
-    }
-    if (licensePlate.length < 8) {
-      Alert.alert("Ошибка", "Введите полный гос. номер (например: А123ВС77)");
-      return;
+    if (!hasNoPlate) {
+      if (!licensePlate.trim()) {
+        Alert.alert("Ошибка", "Введите гос. номер");
+        return;
+      }
+      if (licensePlate.length < 8) {
+        Alert.alert("Ошибка", "Введите полный гос. номер (например: А123ВС77)");
+        return;
+      }
     }
 
     const newCar = {
       brand: brand.trim(),
       model: model.trim(),
-      licensePlate: licensePlate.trim(),
+      hasNoPlate,
+      licensePlate: hasNoPlate ? undefined : licensePlate.trim(),
     };
 
     const success = await addCar(newCar);
@@ -290,19 +295,36 @@ export default function AddCarScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Гос. номер</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="А123ВС77"
-              value={licensePlate}
-              onChangeText={handleLicensePlateChange}
-              autoCapitalize="characters"
-              placeholderTextColor="#666666"
-              maxLength={9}
+          <View style={styles.noPlateRow}>
+            <Text style={styles.label}>Гос. номера нет</Text>
+            <Switch
+              value={hasNoPlate}
+              onValueChange={(value) => {
+                setHasNoPlate(value);
+                if (value) {
+                  setLicensePlate("");
+                }
+              }}
+              trackColor={{ false: "#48484A", true: "#D9E57F" }}
+              thumbColor={hasNoPlate ? "#17181C" : "#f4f3f4"}
             />
-            <Text style={styles.hint}>Формат: А123ВС77 или А123ВС777</Text>
           </View>
+
+          {!hasNoPlate && (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Гос. номер</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="А123ВС77"
+                value={licensePlate}
+                onChangeText={handleLicensePlateChange}
+                autoCapitalize="characters"
+                placeholderTextColor="#666666"
+                maxLength={9}
+              />
+              <Text style={styles.hint}>Формат: А123ВС77 или А123ВС777</Text>
+            </View>
+          )}
 
           <TouchableOpacity style={styles.submitButton} onPress={handleAddCar}>
             <Text style={styles.submitButtonText}>Добавить</Text>
@@ -566,6 +588,17 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 16,
+  },
+  noPlateRow: {
+    marginBottom: 16,
+    backgroundColor: "#2C2C2E",
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#3A3A3C",
   },
   input: {
     backgroundColor: "#3A3A3C",

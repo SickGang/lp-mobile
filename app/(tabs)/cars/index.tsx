@@ -17,6 +17,9 @@ export default function CarsListScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const { cars, selectedCar, selectCar, removeCar } = useCars();
 
+  const getCarPlateLabel = (car: { hasNoPlate: boolean; licensePlate: string | null }) =>
+    car.hasNoPlate || !car.licensePlate ? "Без номера" : car.licensePlate;
+
   const handleDeleteCar = (id: number) => {
     Alert.alert(
       "Удалить автомобиль?",
@@ -76,9 +79,6 @@ export default function CarsListScreen() {
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="settings-outline" size={24} color="#ffffff" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -110,7 +110,7 @@ export default function CarsListScreen() {
                   <View style={styles.carInfo}>
                     <Text style={styles.carBrand}>{car.brand}</Text>
                     <Text style={styles.carModel}>{car.model}</Text>
-                    <Text style={styles.carPlate}>{car.licensePlate}</Text>
+                    <Text style={styles.carPlate}>{getCarPlateLabel(car)}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.deleteIconButton}

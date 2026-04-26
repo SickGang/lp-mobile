@@ -708,7 +708,8 @@ export interface components {
             userId: number;
             brand: string;
             model: string;
-            licensePlate: string;
+            hasNoPlate: boolean;
+            licensePlate?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -776,10 +777,16 @@ export interface components {
              */
             model: string;
             /**
-             * @description Государственный номер
+             * @description У автомобиля отсутствует государственный номер
+             * @default false
+             * @example false
+             */
+            hasNoPlate: boolean;
+            /**
+             * @description Государственный номер (обязателен, если hasNoPlate=false)
              * @example А123БВ77
              */
-            licensePlate: string;
+            licensePlate?: string | null;
         };
         TimeSlotDto: {
             /** @example 09:00 */

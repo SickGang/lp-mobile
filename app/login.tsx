@@ -22,6 +22,7 @@ import MaskInput from 'react-native-mask-input';
 import { API_URL } from "../constants/api";
 
 export default function LoginScreen() {
+  const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState("");
@@ -170,6 +171,49 @@ export default function LoginScreen() {
     }
   };
 
+  const handlePhonePasswordLogin = async () => {
+    if (!phone.trim()) {
+      Alert.alert("Ошибка", "Введите номер телефона");
+      return;
+    }
+
+    if (!password.trim()) {
+      Alert.alert("Ошибка", "Введите пароль");
+      return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.length < 11) {
+      Alert.alert("Ошибка", "Введите полный номер телефона");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API_URL}/auth/login-password`, {
+        phone: `+${cleanPhone}`,
+        password: password.trim(),
+      });
+
+      const token = response.data.accessToken;
+      const userData = response.data.user;
+      if (!token) {
+        throw new Error("Токен не получен от сервера");
+      }
+
+      await login(token, userData);
+      router.replace("/");
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      const errorMessage =
+        backendMessage ||
+        "Не удалось войти. Проверьте телефон и пароль.";
+      Alert.alert("Ошибка", errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -192,6 +236,56 @@ export default function LoginScreen() {
 
           {/* Поля ввода */}
           <View style={styles.form}>
+            <Text style={styles.sectionTitle}>Вход по телефону и паролю</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Телефон</Text>
+              <MaskInput
+                style={styles.input}
+                placeholder="+7 (900) 123-45-67"
+                placeholderTextColor="#666666"
+                value={phone}
+                onChangeText={(masked) => {
+                  setPhone(masked);
+                }}
+                mask={phoneRuMask}
+                keyboardType="phone-pad"
+                autoCapitalize="none"
+                editable={!loading && (isDevMode || !codeSent)}
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Пароль</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Введите пароль"
+                placeholderTextColor="#666666"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.loginButton, loading && styles.buttonDisabled]}
+              onPress={handlePhonePasswordLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#000000" />
+              ) : (
+                <Text style={styles.loginButtonText}>Войти</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.separator}>
+              <View style={styles.separatorLine} />
+              <Text style={styles.separatorText}>или</Text>
+              <View style={styles.separatorLine} />
+            </View>
+
+            <Text style={styles.sectionTitle}>Вход через Telegram</Text>
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Номер телефона</Text>
               <MaskInput
@@ -199,7 +293,7 @@ export default function LoginScreen() {
                 placeholder="+7 (900) 123-45-67"
                 placeholderTextColor="#666666"
                 value={phone}
-                onChangeText={(masked, unmasked) => {
+                onChangeText={(masked) => {
                   setPhone(masked);
                 }}
                 mask={phoneRuMask}
@@ -327,6 +421,12 @@ const styles = StyleSheet.create({
   form: {
     width: "100%",
   },
+  sectionTitle: {
+    color: Colors.text.primary,
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
   inputContainer: {
     marginBottom: 24,
   },
@@ -357,6 +457,21 @@ const styles = StyleSheet.create({
     color: Colors.button.primaryText,
     fontSize: 18,
     fontWeight: "600",
+  },
+  separator: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 24,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.input.background,
+  },
+  separatorText: {
+    marginHorizontal: 12,
+    color: Colors.text.secondary,
+    fontSize: 14,
   },
   resendButton: {
     alignItems: "center",

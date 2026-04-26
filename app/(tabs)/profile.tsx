@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +7,7 @@ import {
   ScrollView,
   Alert,
   Linking,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,9 +20,10 @@ import { API_URL } from "../../constants/api";
 export default function ProfileScreen() {
   const router = useRouter();
   const { logout, user, token } = useAuth();
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
   const supportPhone = "+79990000000";
-  const supportPhoneLabel = "+7 (999) 000-00-00";
-  const supportTelegram = "lp_support_mock";
+  const supportPhoneLabel = "+7 (929) 777-66-66";
+  const supportTelegram = "LP_detailing7";
 
   const handleLogout = async () => {
     Alert.alert("Выход", "Вы уверены, что хотите выйти из аккаунта?", [
@@ -77,7 +80,15 @@ export default function ProfileScreen() {
       <ScrollView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.avatar}>
-          <Ionicons name="person-outline" size={50} color="#000000" />
+          {user?.photoUrl && !avatarLoadError ? (
+            <Image
+              source={{ uri: user.photoUrl }}
+              style={styles.avatarImage}
+              onError={() => setAvatarLoadError(true)}
+            />
+          ) : (
+            <Ionicons name="person-outline" size={50} color="#000000" />
+          )}
         </View>
         <Text style={styles.name}>{user?.name || user?.username || "Пользователь"}</Text>
         {user?.phone && <Text style={styles.phone}>{user.phone}</Text>}
@@ -173,6 +184,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
   avatarText: {
     fontSize: 50,
