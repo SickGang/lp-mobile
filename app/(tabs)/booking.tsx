@@ -128,6 +128,12 @@ export default function BookingScreen() {
     return new Date(year, month - 1, day, hours, minutes, 0, 0);
   };
 
+  const buildSlotIsoUtc = (dateString: string, timeString: string) => {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const [hours, minutes] = timeString.split(":").map(Number);
+    return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0)).toISOString();
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
       setNowTimestamp(Date.now());
@@ -289,8 +295,9 @@ export default function BookingScreen() {
         return;
       }
 
-      // Создаем дату и время для бронирования
-      const startTime = new Date(`${selectedDate}T${selectedTime}:00Z`);
+      // Для API передаем фиксированное "время слота" в UTC,
+      // чтобы на всех клиентах и в админке оставались те же 09:00/11:00 и т.д.
+      const startTimeIso = buildSlotIsoUtc(selectedDate, selectedTime);
 
       // Создаем бронирование
       const response = await axios.post(
@@ -298,7 +305,7 @@ export default function BookingScreen() {
         {
           carId: car.id,
           serviceIds: selectedServices.map((s) => s.id),
-          startTime: startTime.toISOString(),
+          startTime: startTimeIso,
           notes: bookingComment.trim() ? bookingComment.trim() : undefined,
         },
         {
@@ -308,7 +315,7 @@ export default function BookingScreen() {
         }
       );
 
-      Alert.alert("Успешно!", "Ваше бронирование подтверждено. Добавить в календарь?", [
+      Alert.alert("Заявка принята", "Ваше бронирование в ожидании подтверждения. Добавить напоминание в календарь?", [
         {
           text: "Не добавлять",
           style: "cancel",

@@ -24,7 +24,10 @@
         "NSCalendarsFullAccessUsageDescription": "Разрешите полный доступ к календарю, чтобы добавлять напоминания о записи.",
         "NSCalendarsWriteOnlyAccessUsageDescription": "Разрешите доступ к записи в календарь, чтобы создавать напоминания о записи.",
         "NSRemindersUsageDescription": "Разрешите доступ к напоминаниям для записи в сервис.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoadsInWebContent": true
+        }
       }
     },
     "android": {
@@ -34,6 +37,7 @@
       "package": "com.pavellavrenchuk.lpdetailing",
       "versionCode": 2,
       "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
       ]
@@ -51,6 +55,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       [
         "expo-calendar",
         {

@@ -205,9 +205,12 @@ export default function LoginScreen() {
       router.replace("/");
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
+      const isNetworkError = !error.response;
       const errorMessage =
         backendMessage ||
-        "Не удалось войти. Проверьте телефон и пароль.";
+        (isNetworkError
+          ? "Проблема с сетью. Проверьте Wi-Fi/интернет и попробуйте снова."
+          : "Не удалось войти. Проверьте телефон и пароль.");
       Alert.alert("Ошибка", errorMessage);
     } finally {
       setLoading(false);

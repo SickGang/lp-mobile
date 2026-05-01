@@ -2,6 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_URL } from "../../constants/api";
+import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
+import * as Device from "expo-device";
 
 interface User {
   id: number;
@@ -21,6 +25,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const PUSH_TOKEN_STORAGE_KEY = "expo_push_token";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -32,6 +37,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
+  const registerPushToken = async (authToken: string) => {
+    if (Platform.OS === "web") {
+      return;
+    }
+
+    try {
+      if (!Device.isDevice) {
+        return;
+      }
+
+      const permissions = await Notifications.getPermissionsAsync();
+      let finalStatus = permissions.status;
+      if (finalStatus !== "granted") {
+        const requested = await Notifications.requestPermissionsAsync();
+        finalStatus = requested.status;
+      }
+
+      if (finalStatus !== "granted") {
+        return;
+      }
+
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      if (!projectId) {
+        console.warn("EAS projectId is missing, skip push token registration");
+        return;
+      }
+
+      const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
+      const expoPushToken = tokenResponse.data;
+      if (!expoPushToken) {
+        return;
+      }
+
+      await axios.post(
+        `${API_URL}/push-tokens`,
+        {
+          token: expoPushToken,
+          platform: Platform.OS,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        },
+      );
+
+      await AsyncStorage.setItem(PUSH_TOKEN_STORAGE_KEY, expoPushToken);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (message.includes("aps-environment")) {
+        console.warn("Push entitlement is missing for this iOS build profile.");
+        return;
+      }
+
+      console.warn("Error registering push token:", message);
+    }
+  };
+
   const checkAuth = async () => {
     try {
       const savedToken = await AsyncStorage.getItem("auth_token");
@@ -40,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (savedToken) {
         setToken(savedToken);
         setIsAuthenticated(true);
+        void registerPushToken(savedToken);
 
         if (savedUser) {
           const parsedUser = JSON.parse(savedUser) as User;
@@ -88,6 +154,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem("auth_token", newToken);
       setToken(newToken);
       setIsAuthenticated(true);
+
+      void registerPushToken(newToken);
       
       if (userData) {
         await AsyncStorage.setItem("user_data", JSON.stringify(userData));
@@ -100,8 +168,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      if (token) {
+        const savedPushToken = await AsyncStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
+        await axios.delete(`${API_URL}/push-tokens/me`, {
+          data: {
+            token: savedPushToken || undefined,
+          },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
       await AsyncStorage.removeItem("auth_token");
       await AsyncStorage.removeItem("user_data");
+      await AsyncStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);

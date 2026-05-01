@@ -128,7 +128,7 @@ export default function HistoryScreen() {
       "ноября",
       "декабря",
     ];
-    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} г.`;
+    return `${date.getUTCDate()} ${months[date.getUTCMonth()]} ${date.getUTCFullYear()} г.`;
   };
 
   const formatTime = (dateString: string) => {
@@ -138,16 +138,47 @@ export default function HistoryScreen() {
     return `${hours}:${minutes}`;
   };
 
+  // Booking time is displayed using UTC clock fields (15:00, 17:00, ...).
+  // Compare using the same wall-clock interpretation to avoid timezone drift in simulator.
+  const getDisplayedBookingDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Date(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds()
+    );
+  };
+
   const getServiceNames = (booking: Booking) => {
     return booking.selectedServices.map((s) => s.service.name).join(", ");
   };
 
+  const getStatusLabel = (status: string) => {
+    if (status === "pending") return "В ожидании";
+    if (status === "confirmed") return "Подтверждено";
+    if (status === "cancelled") return "Отменено";
+    if (status === "completed") return "Завершено";
+    return status;
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    if (status === "pending") return styles.statusBadgePending;
+    if (status === "confirmed") return styles.statusBadgeConfirmed;
+    if (status === "cancelled") return styles.statusBadgeCancelled;
+    if (status === "completed") return styles.statusBadgeCompleted;
+    return styles.statusBadgePending;
+  };
+
   const now = new Date();
   const activeBookings = bookings.filter(
-    (b) => new Date(b.startTime) > now && b.status !== "cancelled"
+    (b) => getDisplayedBookingDate(b.startTime) > now && b.status !== "cancelled"
   );
   const pastBookings = bookings.filter(
-    (b) => new Date(b.startTime) <= now || b.status === "cancelled"
+    (b) => getDisplayedBookingDate(b.startTime) <= now || b.status === "cancelled"
   );
 
   return (
@@ -204,6 +235,9 @@ export default function HistoryScreen() {
             <View key={booking.id} style={styles.bookingCard}>
               <View style={styles.bookingInfo}>
                 <Text style={styles.serviceName}>{getServiceNames(booking)}</Text>
+                <View style={[styles.statusBadge, getStatusBadgeStyle(booking.status)]}>
+                  <Text style={styles.statusBadgeText}>{getStatusLabel(booking.status)}</Text>
+                </View>
                 <View style={styles.bookingDetails}>
                   <Text style={styles.bookingDate}>
                     {formatDate(booking.startTime)}
@@ -238,6 +272,9 @@ export default function HistoryScreen() {
                 <Text style={styles.serviceNamePast}>
                   {getServiceNames(booking)}
                 </Text>
+                <View style={[styles.statusBadge, getStatusBadgeStyle(booking.status)]}>
+                  <Text style={styles.statusBadgeText}>{getStatusLabel(booking.status)}</Text>
+                </View>
                 <View style={styles.bookingDetails}>
                   <Text style={styles.bookingDatePast}>
                     {formatDate(booking.startTime)}
@@ -352,6 +389,30 @@ const styles = StyleSheet.create({
   },
   bookingInfo: {
     flex: 1,
+  },
+  statusBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  statusBadgePending: {
+    backgroundColor: "rgba(217, 229, 127, 0.18)",
+  },
+  statusBadgeConfirmed: {
+    backgroundColor: "rgba(76, 175, 80, 0.2)",
+  },
+  statusBadgeCancelled: {
+    backgroundColor: "rgba(255, 59, 48, 0.2)",
+  },
+  statusBadgeCompleted: {
+    backgroundColor: "rgba(100, 149, 237, 0.2)",
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#ffffff",
   },
   serviceName: {
     fontSize: 18,
