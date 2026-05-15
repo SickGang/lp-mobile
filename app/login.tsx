@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -15,43 +15,76 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import axios from "axios";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useAuth } from "./context/AuthContext";
 import Colors from "../constants/colors";
-import MaskInput from 'react-native-mask-input';
-
+import MaskInput from "react-native-mask-input";
 import { API_URL } from "../constants/api";
+import {
+  isAppleSignInAvailable,
+  signInWithAppleApi,
+} from "../lib/appleSignIn";
 
 export default function LoginScreen() {
-  const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
   const isDevMode = __DEV__;
 
-  // Маска для российского номера: +7 (XXX) XXX-XX-XX
   const phoneRuMask = [
-    '+',
-    '7',
-    ' ',
-    '(',
+    "+",
+    "7",
+    " ",
+    "(",
     /\d/,
     /\d/,
     /\d/,
-    ')',
-    ' ',
+    ")",
+    " ",
     /\d/,
     /\d/,
     /\d/,
-    '-',
+    "-",
     /\d/,
     /\d/,
-    '-',
+    "-",
     /\d/,
     /\d/,
   ];
+
+  useEffect(() => {
+    void isAppleSignInAvailable().then(setAppleAvailable);
+  }, []);
+
+  const completeLogin = async (token: string, userData: unknown) => {
+    await login(token, userData as Parameters<typeof login>[1]);
+    router.replace("/");
+  };
+
+  const handleAppleSignIn = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { accessToken, user } = await signInWithAppleApi();
+      await completeLogin(accessToken, user);
+    } catch (error: unknown) {
+      const err = error as { code?: string; response?: { data?: { message?: string } }; message?: string };
+      if (err.code === "ERR_REQUEST_CANCELED") {
+        return;
+      }
+      const message =
+        err.response?.data?.message ||
+        err.message ||
+        "Не удалось войти через Apple";
+      Alert.alert("Ошибка", message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSendTelegramCode = async () => {
     if (!phone.trim()) {
@@ -59,32 +92,24 @@ export default function LoginScreen() {
       return;
     }
 
-    // Очищаем номер телефона от форматирования
-    const cleanPhone = phone.replace(/\D/g, '');
-    
+    const cleanPhone = phone.replace(/\D/g, "");
+
     if (cleanPhone.length < 11) {
       Alert.alert("Ошибка", "Введите полный номер телефона");
       return;
     }
 
-    // Открываем Telegram бота с deep link
-    const botUsername = "lp_carwash_bot"; // Замените на имя вашего бота
+    const botUsername = "lp_carwash_bot";
     const deepLink = `https://t.me/${botUsername}?start=${cleanPhone}`;
-    
+
     try {
       const supported = await Linking.canOpenURL(deepLink);
       if (supported) {
         await Linking.openURL(deepLink);
-        
-        // Показываем форму для ввода кода
         setCodeSent(true);
-        
-        // Телефон уже отформатирован, оставляем как есть для отображения
-        // но для API будем использовать cleanPhone
-        
         Alert.alert(
           "Откройте Telegram",
-          "Нажмите 'START' в боте, и вам придет код. Затем вернитесь сюда и введите его."
+          "Нажмите START в боте, затем вернитесь в приложение и введите код.",
         );
       } else {
         Alert.alert("Ошибка", "Не удалось открыть Telegram");
@@ -104,9 +129,8 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      // Очищаем номер от форматирования и добавляем +
-      const cleanPhone = phone.replace(/\D/g, '');
-      
+      const cleanPhone = phone.replace(/\D/g, "");
+
       const response = await axios.post(`${API_URL}/auth/telegram/verify-code`, {
         phoneOrUsername: `+${cleanPhone}`,
         code: code.trim(),
@@ -114,23 +138,15 @@ export default function LoginScreen() {
 
       const token = response.data.accessToken;
       const userData = response.data.user;
-      
+
       if (!token) {
         throw new Error("Токен не получен от сервера");
       }
-      
-      await login(token, userData);
 
-      Alert.alert("Успех", "Авторизация прошла успешно!", [
-        {
-          text: "OK",
-          onPress: () => router.replace("/"),
-        },
-      ]);
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message || "Неверный код";
-      Alert.alert("Ошибка", errorMessage);
+      await completeLogin(token, userData);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      Alert.alert("Ошибка", err.response?.data?.message || "Неверный код");
     } finally {
       setLoading(false);
     }
@@ -160,58 +176,13 @@ export default function LoginScreen() {
         throw new Error("Токен не получен от сервера");
       }
 
-      await login(token, userData);
-      router.replace("/");
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message || "Не удалось войти в dev-режиме";
-      Alert.alert("Ошибка", errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePhonePasswordLogin = async () => {
-    if (!phone.trim()) {
-      Alert.alert("Ошибка", "Введите номер телефона");
-      return;
-    }
-
-    if (!password.trim()) {
-      Alert.alert("Ошибка", "Введите пароль");
-      return;
-    }
-
-    const cleanPhone = phone.replace(/\D/g, "");
-    if (cleanPhone.length < 11) {
-      Alert.alert("Ошибка", "Введите полный номер телефона");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/auth/login-password`, {
-        phone: `+${cleanPhone}`,
-        password: password.trim(),
-      });
-
-      const token = response.data.accessToken;
-      const userData = response.data.user;
-      if (!token) {
-        throw new Error("Токен не получен от сервера");
-      }
-
-      await login(token, userData);
-      router.replace("/");
-    } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      const isNetworkError = !error.response;
-      const errorMessage =
-        backendMessage ||
-        (isNetworkError
-          ? "Проблема с сетью. Проверьте Wi-Fi/интернет и попробуйте снова."
-          : "Не удалось войти. Проверьте телефон и пароль.");
-      Alert.alert("Ошибка", errorMessage);
+      await completeLogin(token, userData);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      Alert.alert(
+        "Ошибка",
+        err.response?.data?.message || "Не удалось войти в dev-режиме",
+      );
     } finally {
       setLoading(false);
     }
@@ -228,7 +199,6 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          {/* Логотип */}
           <View style={styles.logoContainer}>
             <Image
               source={require("../assets/logo.png")}
@@ -237,57 +207,7 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* Поля ввода */}
           <View style={styles.form}>
-            <Text style={styles.sectionTitle}>Вход по телефону и паролю</Text>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Телефон</Text>
-              <MaskInput
-                style={styles.input}
-                placeholder="+7 (900) 123-45-67"
-                placeholderTextColor="#666666"
-                value={phone}
-                onChangeText={(masked) => {
-                  setPhone(masked);
-                }}
-                mask={phoneRuMask}
-                keyboardType="phone-pad"
-                autoCapitalize="none"
-                editable={!loading && (isDevMode || !codeSent)}
-              />
-            </View>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Пароль</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Введите пароль"
-                placeholderTextColor="#666666"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!loading}
-              />
-            </View>
-            <TouchableOpacity
-              style={[styles.loginButton, loading && styles.buttonDisabled]}
-              onPress={handlePhonePasswordLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#000000" />
-              ) : (
-                <Text style={styles.loginButtonText}>Войти</Text>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.separator}>
-              <View style={styles.separatorLine} />
-              <Text style={styles.separatorText}>или</Text>
-              <View style={styles.separatorLine} />
-            </View>
-
             <Text style={styles.sectionTitle}>Вход через Telegram</Text>
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Номер телефона</Text>
@@ -296,9 +216,7 @@ export default function LoginScreen() {
                 placeholder="+7 (900) 123-45-67"
                 placeholderTextColor="#666666"
                 value={phone}
-                onChangeText={(masked) => {
-                  setPhone(masked);
-                }}
+                onChangeText={setPhone}
                 mask={phoneRuMask}
                 keyboardType="phone-pad"
                 autoCapitalize="none"
@@ -316,7 +234,9 @@ export default function LoginScreen() {
                   {loading ? (
                     <ActivityIndicator color="#000000" />
                   ) : (
-                    <Text style={styles.loginButtonText}>Войти (локальный dev)</Text>
+                    <Text style={styles.loginButtonText}>
+                      Войти (локальный dev)
+                    </Text>
                   )}
                 </TouchableOpacity>
                 <Text style={styles.devHint}>
@@ -326,68 +246,93 @@ export default function LoginScreen() {
             ) : (
               <>
                 {!codeSent ? (
-                <TouchableOpacity
-                  style={[styles.loginButton, loading && styles.buttonDisabled]}
-                  onPress={handleSendTelegramCode}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#000000" />
-                  ) : (
-                    <Text style={styles.loginButtonText}>
-                      Авторизоваться через Telegram
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <>
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Код из Telegram</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="123456"
-                      placeholderTextColor="#666666"
-                      value={code}
-                      onChangeText={setCode}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      editable={!loading}
-                    />
-                  </View>
-
                   <TouchableOpacity
-                    style={[
-                      styles.loginButton,
-                      loading && styles.buttonDisabled,
-                    ]}
-                    onPress={handleVerifyTelegramCode}
+                    style={[styles.loginButton, loading && styles.buttonDisabled]}
+                    onPress={handleSendTelegramCode}
                     disabled={loading}
                   >
                     {loading ? (
                       <ActivityIndicator color="#000000" />
                     ) : (
-                      <Text style={styles.loginButtonText}>Войти</Text>
+                      <Text style={styles.loginButtonText}>
+                        Авторизоваться через Telegram
+                      </Text>
                     )}
                   </TouchableOpacity>
+                ) : (
+                  <>
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Код из Telegram</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="123456"
+                        placeholderTextColor="#666666"
+                        value={code}
+                        onChangeText={setCode}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        editable={!loading}
+                      />
+                    </View>
 
-                  <TouchableOpacity
-                    style={styles.resendButton}
-                    onPress={() => {
-                      setCodeSent(false);
-                      setCode("");
-                      // Номер остается отформатированным
-                    }}
-                    disabled={loading}
-                  >
-                    <Text style={styles.resendButtonText}>
-                      Открыть Telegram снова
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </>
+                    <TouchableOpacity
+                      style={[
+                        styles.loginButton,
+                        loading && styles.buttonDisabled,
+                      ]}
+                      onPress={handleVerifyTelegramCode}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color="#000000" />
+                      ) : (
+                        <Text style={styles.loginButtonText}>Войти</Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.resendButton}
+                      onPress={() => {
+                        setCodeSent(false);
+                        setCode("");
+                      }}
+                      disabled={loading}
+                    >
+                      <Text style={styles.resendButtonText}>
+                        Открыть Telegram снова
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </>
             )}
 
+            {appleAvailable && (
+              <>
+                <View style={styles.separator}>
+                  <View style={styles.separatorLine} />
+                  <Text style={styles.separatorText}>или</Text>
+                  <View style={styles.separatorLine} />
+                </View>
+
+                <View
+                  pointerEvents={loading ? "none" : "auto"}
+                  style={loading ? styles.buttonDisabled : undefined}
+                >
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={
+                      AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                    }
+                    buttonStyle={
+                      AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                    }
+                    cornerRadius={12}
+                    style={styles.appleButton}
+                    onPress={handleAppleSignIn}
+                  />
+                </View>
+              </>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -423,6 +368,10 @@ const styles = StyleSheet.create({
   },
   form: {
     width: "100%",
+  },
+  appleButton: {
+    width: "100%",
+    height: 52,
   },
   sectionTitle: {
     color: Colors.text.primary,
@@ -492,20 +441,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
   },
-  registerContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 32,
-  },
-  registerText: {
-    color: Colors.text.primary,
-    fontSize: 16,
-  },
-  registerLink: {
-    color: Colors.warning,
-    fontSize: 16,
-    fontWeight: "600",
-  },
 });
-

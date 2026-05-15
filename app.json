@@ -11,14 +11,13 @@
       "resizeMode": "contain",
       "backgroundColor": "#4A90E2"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "icon": "./assets/logo.jpg",
       "supportsTablet": true,
       "bundleIdentifier": "com.pavellavrenchuk.lpdetailing",
-      "buildNumber": "2",
+      "usesAppleSignIn": true,
+      "buildNumber": "3",
       "infoPlist": {
         "NSCalendarsUsageDescription": "Разрешите доступ к календарю, чтобы добавлять напоминания о записи.",
         "NSCalendarsFullAccessUsageDescription": "Разрешите полный доступ к календарю, чтобы добавлять напоминания о записи.",
@@ -47,7 +46,7 @@
     },
     "extra": {
       "apiUrl": "https://sickgang-lp-api-b7b5.twc1.net",
-      "localApiUrl": "http://192.168.0.106:3000",
+      "localApiUrl": "http://10.12.53.124:3000",
       "router": {},
       "eas": {
         "projectId": "76cab969-007a-437b-8c5e-2b5458a78159"
@@ -55,6 +54,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       "expo-notifications",
       [
         "expo-calendar",

@@ -2726,6 +2726,11 @@ event-target-shim@^5.0.0:
   resolved "https://registry.yarnpkg.com/event-target-shim/-/event-target-shim-5.0.1.tgz#5d4d3ebdf9583d63a5333ce2deb7480ab2b05789"
   integrity sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==
 
+expo-apple-authentication@^55.0.13:
+  version "55.0.13"
+  resolved "https://registry.yarnpkg.com/expo-apple-authentication/-/expo-apple-authentication-55.0.13.tgz#0045228dbc991877001790eff1f1afbdd2e295f7"
+  integrity sha512-Qvh3DmhXqhtWOe7BC9e7UVApR3XS1qE7+68tVLqb3KI/sET7QV9KT5JgOJogWmmCJVxA/kaot0M136yvW1pdWA==
+
 expo-application@~7.0.8:
   version "7.0.8"
   resolved "https://registry.yarnpkg.com/expo-application/-/expo-application-7.0.8.tgz#320af0d6c39b331456d3bc833b25763c702d23db"
