@@ -11,12 +11,15 @@ import {
   FlatList,
   ActivityIndicator,
   Switch,
+  Platform,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { useCars } from "../../context/CarsContext";
 import { useRouter } from "expo-router";
+import { useAuth } from "../../context/AuthContext";
+import { promptSignIn } from "../../../lib/promptSignIn";
 
 interface CarModel {
   id: string;
@@ -46,6 +49,14 @@ export default function AddCarScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { addCar } = useCars();
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      promptSignIn(router, "Войдите, чтобы добавить автомобиль");
+      router.back();
+    }
+  }, [isAuthenticated, router]);
 
   const [listPicker, setListPicker] = useState<ListPicker>("none");
   const [brand, setBrand] = useState("");
@@ -296,7 +307,7 @@ export default function AddCarScreen() {
           </View>
 
           <View style={styles.noPlateRow}>
-            <Text style={styles.label}>Гос. номера нет</Text>
+            <Text style={styles.noPlateLabel}>Гос. номера нет</Text>
             <Switch
               value={hasNoPlate}
               onValueChange={(value) => {
@@ -593,12 +604,24 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: "#2C2C2E",
     borderRadius: 12,
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
     borderColor: "#3A3A3C",
+  },
+  noPlateLabel: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+    lineHeight: 22,
+    ...(Platform.OS === "android"
+      ? { includeFontPadding: false, textAlignVertical: "center" as const }
+      : {}),
   },
   input: {
     backgroundColor: "#3A3A3C",

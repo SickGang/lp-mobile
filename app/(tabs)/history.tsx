@@ -18,6 +18,7 @@ import { useCallback } from "react";
 import Colors from "../../constants/colors";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../../constants/api";
+import { SignInPrompt } from "../../components/SignInPrompt";
 
 interface Booking {
   id: number;
@@ -40,7 +41,7 @@ interface Booking {
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [avatarLoadError, setAvatarLoadError] = useState(false);
@@ -48,8 +49,13 @@ export default function HistoryScreen() {
   // Перезагружаем бронирования при возврате на экран
   useFocusEffect(
     useCallback(() => {
-      loadBookings();
-    }, [])
+      if (isAuthenticated) {
+        loadBookings();
+      } else {
+        setBookings([]);
+        setLoading(false);
+      }
+    }, [isAuthenticated]),
   );
 
   const loadBookings = async () => {
@@ -57,6 +63,7 @@ export default function HistoryScreen() {
       setLoading(true);
       const token = await AsyncStorage.getItem("auth_token");
       if (!token) {
+        setBookings([]);
         return;
       }
 
@@ -196,19 +203,29 @@ export default function HistoryScreen() {
             onError={() => setAvatarLoadError(true)}
           />
           <View style={styles.greetingContainer}>
-            <Text style={styles.userName}>{user?.name || user?.username || "Пользователь"}</Text>
-            <Text style={styles.greeting}>С возвращением!</Text>
+            <Text style={styles.userName}>
+              {isAuthenticated
+                ? user?.name || user?.username || "Пользователь"
+                : "Гость"}
+            </Text>
+            <Text style={styles.greeting}>
+              {isAuthenticated ? "С возвращением!" : "История бронирований"}
+            </Text>
           </View>
         </View>
         <View style={styles.iconButtons}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() =>
+            onPress={() => {
+              if (!isAuthenticated) {
+                router.push("/login");
+                return;
+              }
               router.push({
                 pathname: "/notifications",
                 params: { from: "/history" },
-              })
-            }
+              });
+            }}
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
           </TouchableOpacity>
@@ -216,7 +233,15 @@ export default function HistoryScreen() {
       </View>
 
       {/* Основной контент */}
-      {loading ? (
+      {!isAuthenticated ? (
+        <SignInPrompt
+          title="Войдите в аккаунт"
+          description={
+            "История бронирований доступна после входа.\nВы можете просматривать услуги и цены без регистрации."
+          }
+          icon="time-outline"
+        />
+      ) : loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#D9E57F" />
           <Text style={styles.loadingText}>Загрузка...</Text>

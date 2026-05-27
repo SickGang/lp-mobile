@@ -9,6 +9,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Colors from "../../constants/colors";
+import { useAuth } from "../context/AuthContext";
+import { SignInPrompt } from "../../components/SignInPrompt";
 
 interface Notification {
   id: string;
@@ -21,13 +23,12 @@ interface Notification {
 export default function NotificationsScreen() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
-  
-  // Пока уведомления захардкодим, позже можно будет загружать с API
+  const { isAuthenticated } = useAuth();
+
   const notifications: Notification[] = [];
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Шапка */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -49,6 +50,13 @@ export default function NotificationsScreen() {
         <View style={styles.placeholder} />
       </View>
 
+      {!isAuthenticated ? (
+        <SignInPrompt
+          title="Войдите в аккаунт"
+          description="Уведомления о записях доступны после входа."
+          icon="notifications-outline"
+        />
+      ) : (
       <ScrollView style={styles.content}>
         {notifications.length === 0 ? (
           <View style={styles.emptyState}>
@@ -92,6 +100,7 @@ export default function NotificationsScreen() {
           </View>
         )}
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

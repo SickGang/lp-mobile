@@ -18,9 +18,7 @@ function RootLayoutNav() {
 
     const onLogin = segments[0] === "login";
 
-    if (!isAuthenticated && !onLogin) {
-      router.replace("/login");
-    } else if (isAuthenticated && onLogin) {
+    if (isAuthenticated && onLogin) {
       router.replace("/");
     }
   }, [isAuthenticated, segments, loading]);

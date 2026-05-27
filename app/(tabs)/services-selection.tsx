@@ -14,6 +14,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useCars } from "../context/CarsContext";
 import { useBooking } from "../context/BookingContext";
+import { useAuth } from "../context/AuthContext";
+import { promptSignIn } from "../../lib/promptSignIn";
 import axios from "axios";
 import { useCallback } from "react";
 import { API_URL } from "../../constants/api";
@@ -48,13 +50,14 @@ export default function ServicesSelectionScreen() {
   const router = useRouter();
   const { selectedCar, cars, selectCar } = useCars();
   const { setSelectedServices } = useBooking();
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [carModalVisible, setCarModalVisible] = useState(false);
 
   const [categories, setCategories] = useState<Category[]>([]);
 
-  const getCarPlateLabel = (car: { hasNoPlate: boolean; licensePlate: string | null }) =>
-    car.hasNoPlate || !car.licensePlate ? "Без номера" : car.licensePlate;
+  const getCarDisplayLabel = (car: { brand: string; model: string }) =>
+    [car.brand, car.model].filter(Boolean).join(" ") || "Автомобиль";
 
   // Загружаем услуги из API при монтировании
   useEffect(() => {
@@ -166,9 +169,27 @@ export default function ServicesSelectionScreen() {
     );
   };
 
+  const handleCarSelectorPress = () => {
+    if (!isAuthenticated) {
+      promptSignIn(
+        router,
+        "Войдите, чтобы выбрать автомобиль и записаться на услугу",
+      );
+      return;
+    }
+    setCarModalVisible(true);
+  };
+
   const handleContinue = () => {
     const selected = getSelectedServices();
     if (selected.length === 0) {
+      return;
+    }
+    if (!isAuthenticated) {
+      promptSignIn(
+        router,
+        "Войдите, чтобы записаться на выбранные услуги",
+      );
       return;
     }
     if (!selectedCar) {
@@ -228,11 +249,11 @@ export default function ServicesSelectionScreen() {
       {/* Информация о выбранном автомобиле */}
       <TouchableOpacity
         style={styles.carInfo}
-        onPress={() => setCarModalVisible(true)}
+        onPress={handleCarSelectorPress}
       >
         <Ionicons name="car-sport" size={24} color="#ffffff" />
         <Text style={styles.carInfoText}>
-          {selectedCar ? getCarPlateLabel(selectedCar) : "Выберите автомобиль"}
+          {selectedCar ? getCarDisplayLabel(selectedCar) : "Выберите автомобиль"}
         </Text>
         <Ionicons name="chevron-down" size={24} color="#ffffff" />
       </TouchableOpacity>
@@ -360,10 +381,12 @@ export default function ServicesSelectionScreen() {
                     <View style={styles.carItemInfo}>
                       <Ionicons name="car-sport" size={24} color="#ffffff" />
                       <View style={styles.carItemDetails}>
-                        <Text style={styles.carItemPlate}>{getCarPlateLabel(car)}</Text>
-                        <Text style={styles.carItemModel}>
-                          {car.brand} {car.model}
+                        <Text style={styles.carItemPlate}>
+                          {getCarDisplayLabel(car)}
                         </Text>
+                        {!car.hasNoPlate && car.licensePlate ? (
+                          <Text style={styles.carItemModel}>{car.licensePlate}</Text>
+                        ) : null}
                       </View>
                     </View>
                     {selectedCar?.id === car.id && (

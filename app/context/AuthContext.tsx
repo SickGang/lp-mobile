@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_URL } from "../../constants/api";
+import { isInvalidAuthError } from "../../lib/authSession";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
@@ -32,6 +33,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const clearLocalSession = useCallback(async () => {
+    await AsyncStorage.multiRemove([
+      "auth_token",
+      "user_data",
+      PUSH_TOKEN_STORAGE_KEY,
+    ]);
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+  }, []);
 
   useEffect(() => {
     checkAuth();
@@ -100,46 +112,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = async () => {
     try {
       const savedToken = await AsyncStorage.getItem("auth_token");
-      const savedUser = await AsyncStorage.getItem("user_data");
-      
-      if (savedToken) {
+      if (!savedToken) {
+        return;
+      }
+
+      const savedUserRaw = await AsyncStorage.getItem("user_data");
+      let cachedUser: User | null = null;
+      if (savedUserRaw) {
+        try {
+          cachedUser = JSON.parse(savedUserRaw) as User;
+        } catch {
+          await AsyncStorage.removeItem("user_data");
+        }
+      }
+
+      try {
+        const meResponse = await axios.get(`${API_URL}/users/me`, {
+          headers: {
+            Authorization: `Bearer ${savedToken}`,
+          },
+        });
+
+        const me = meResponse.data as {
+          id: number;
+          phone?: string | null;
+          name?: string | null;
+          username?: string | null;
+          photoUrl?: string | null;
+        };
+
+        const refreshedUser: User = {
+          id: me.id,
+          phone: me.phone ?? undefined,
+          name: me.name ?? undefined,
+          username: me.username ?? undefined,
+          photoUrl: me.photoUrl ?? null,
+        };
+
         setToken(savedToken);
         setIsAuthenticated(true);
+        setUser(refreshedUser);
+        await AsyncStorage.setItem("user_data", JSON.stringify(refreshedUser));
         void registerPushToken(savedToken);
+      } catch (error) {
+        if (isInvalidAuthError(error)) {
+          await clearLocalSession();
+          return;
+        }
 
-        if (savedUser) {
-          const parsedUser = JSON.parse(savedUser) as User;
-          setUser(parsedUser);
+        console.warn("Could not verify session, using cached profile:", error);
 
-          // Обновляем профиль с бэка, чтобы подтянуть актуальный photoUrl.
-          try {
-            const meResponse = await axios.get(`${API_URL}/users/me`, {
-              headers: {
-                Authorization: `Bearer ${savedToken}`,
-              },
-            });
-
-            const me = meResponse.data as {
-              id: number;
-              phone?: string | null;
-              name?: string | null;
-              username?: string | null;
-              photoUrl?: string | null;
-            };
-
-            const refreshedUser: User = {
-              id: me.id,
-              phone: me.phone ?? undefined,
-              name: me.name ?? undefined,
-              username: me.username ?? undefined,
-              photoUrl: me.photoUrl ?? null,
-            };
-
-            await AsyncStorage.setItem("user_data", JSON.stringify(refreshedUser));
-            setUser(refreshedUser);
-          } catch (refreshError) {
-            console.error("Error refreshing user profile:", refreshError);
-          }
+        if (cachedUser) {
+          setToken(savedToken);
+          setIsAuthenticated(true);
+          setUser(cachedUser);
+        } else {
+          await clearLocalSession();
         }
       }
     } catch (error) {
@@ -167,26 +195,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    const authToken = token ?? (await AsyncStorage.getItem("auth_token"));
+
     try {
-      if (token) {
+      if (authToken) {
         const savedPushToken = await AsyncStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
         await axios.delete(`${API_URL}/push-tokens/me`, {
           data: {
             token: savedPushToken || undefined,
           },
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${authToken}`,
           },
         });
       }
-      await AsyncStorage.removeItem("auth_token");
-      await AsyncStorage.removeItem("user_data");
-      await AsyncStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
-      setToken(null);
-      setUser(null);
-      setIsAuthenticated(false);
     } catch (error) {
-      console.error("Error removing token:", error);
+      // Сессия могла уже быть недействительной — локальный выход всё равно выполняем.
+      if (!isInvalidAuthError(error)) {
+        console.warn("Push token cleanup failed during logout:", error);
+      }
+    } finally {
+      await clearLocalSession();
     }
   };
 

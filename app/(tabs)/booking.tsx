@@ -76,7 +76,7 @@ interface TimeSlot {
 export default function BookingScreen() {
   const router = useRouter();
   const { carId: carIdParam } = useLocalSearchParams<{ carId?: string }>();
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { cars, selectedCar, loading, selectCar } = useCars();
   const { selectedServices, totalPrice, clearBooking } = useBooking();
 
@@ -290,8 +290,14 @@ export default function BookingScreen() {
       // Получаем токен
       const token = await AsyncStorage.getItem("auth_token");
       if (!token) {
-        Alert.alert("Ошибка", "Необходима авторизация");
-        router.push("/login");
+        Alert.alert(
+          "Требуется вход",
+          "Войдите в аккаунт, чтобы подтвердить запись",
+          [
+            { text: "Отмена", style: "cancel" },
+            { text: "Войти", onPress: () => router.push("/login") },
+          ],
+        );
         return;
       }
 
@@ -397,23 +403,44 @@ export default function BookingScreen() {
     );
   }
 
-  // Если автомобилей нет - показываем empty state
+  // Если автомобилей нет — гость может смотреть услуги; для записи нужен вход
   if (cars.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.emptyState}>
           <Ionicons name="car-sport-outline" size={64} color="#666666" />
-          <Text style={styles.emptyTitle}>У вас нет автомобилей</Text>
+          <Text style={styles.emptyTitle}>
+            {isAuthenticated
+              ? "У вас нет автомобилей"
+              : "Запись на услуги"}
+          </Text>
           <Text style={styles.emptyDescription}>
-            Добавьте автомобиль, чтобы продолжить
+            {isAuthenticated
+              ? "Добавьте автомобиль или посмотрите каталог услуг"
+              : "Посмотрите услуги и цены без регистрации.\nДля записи потребуется вход в аккаунт."}
           </Text>
           <TouchableOpacity
             style={styles.addCarButton}
-            onPress={() => router.push("/cars")}
+            onPress={() => router.push("/services-selection")}
           >
-            <Ionicons name="car-sport-outline" size={24} color="#17181C" />
-            <Text style={styles.addCarButtonText}>Мои автомобили</Text>
+            <Ionicons name="pricetags-outline" size={24} color="#17181C" />
+            <Text style={styles.addCarButtonText}>Услуги и цены</Text>
           </TouchableOpacity>
+          {isAuthenticated ? (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => router.push("/cars")}
+            >
+              <Text style={styles.secondaryButtonText}>Мои автомобили</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => router.push("/login")}
+            >
+              <Text style={styles.secondaryButtonText}>Войти для записи</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
     );
@@ -806,6 +833,15 @@ const styles = StyleSheet.create({
   },
   addCarButtonText: {
     color: "#17181C",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  secondaryButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+  },
+  secondaryButtonText: {
+    color: "#D9E57F",
     fontSize: 16,
     fontWeight: "600",
   },

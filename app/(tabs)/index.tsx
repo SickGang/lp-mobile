@@ -19,7 +19,7 @@ import { useAuth } from "../context/AuthContext";
 export default function HomeScreen() {
   const router = useRouter();
   const { cars, loading } = useCars();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const defaultAvatar = require("../../assets/logo.png") as ImageSourcePropType;
   const [avatarLoadError, setAvatarLoadError] = useState(false);
 
@@ -28,8 +28,10 @@ export default function HomeScreen() {
     : defaultAvatar;
 
   const handleBookingClick = () => {
-    // Всегда переходим на /booking
-    // Там уже есть логика: если нет авто - показывает empty state, если есть - редиректит на services-selection
+    if (!isAuthenticated) {
+      router.push("/services-selection");
+      return;
+    }
     router.push("/booking");
   };
   return (
@@ -39,26 +41,45 @@ export default function HomeScreen() {
 
       {/* Шапка с профилем */}
       <View style={styles.topBar}>
-        <View style={styles.profileSection}>
+        <TouchableOpacity
+          style={styles.profileSection}
+          onPress={() => {
+            if (!isAuthenticated) {
+              router.push("/login");
+            }
+          }}
+          disabled={isAuthenticated}
+          activeOpacity={isAuthenticated ? 1 : 0.7}
+        >
           <Image
             source={avatarSource}
             style={styles.avatar}
             onError={() => setAvatarLoadError(true)}
           />
           <View style={styles.greetingContainer}>
-            <Text style={styles.userName}>{user?.name || user?.username || "Пользователь"}</Text>
-            <Text style={styles.greeting}>С возвращением!</Text>
+            <Text style={styles.userName}>
+              {isAuthenticated
+                ? user?.name || user?.username || "Пользователь"
+                : "Гость"}
+            </Text>
+            <Text style={styles.greeting}>
+              {isAuthenticated ? "С возвращением!" : "Нажмите, чтобы войти"}
+            </Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={styles.iconButtons}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() =>
+            onPress={() => {
+              if (!isAuthenticated) {
+                router.push("/login");
+                return;
+              }
               router.push({
                 pathname: "/notifications",
                 params: { from: "/" },
-              })
-            }
+              });
+            }}
           >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
           </TouchableOpacity>

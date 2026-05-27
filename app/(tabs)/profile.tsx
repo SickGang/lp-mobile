@@ -16,14 +16,34 @@ import { useAuth } from "../context/AuthContext";
 import Colors from "../../constants/colors";
 import axios from "axios";
 import { API_URL } from "../../constants/api";
+const supportPhone = "+79990000000";
+const supportPhoneLabel = "+7 (929) 777-66-66";
+const supportTelegram = "LP_detailing7";
+
+function SupportCard() {
+  return (
+    <View style={styles.supportCard}>
+      <Text style={styles.supportTitle}>Поддержка</Text>
+      <TouchableOpacity
+        onPress={() => Linking.openURL(`tel:${supportPhone}`)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.supportLink}>Телефон: {supportPhoneLabel}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => Linking.openURL(`https://t.me/${supportTelegram}`)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.supportLink}>Telegram: @{supportTelegram}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { logout, user, token } = useAuth();
+  const { logout, user, token, isAuthenticated } = useAuth();
   const [avatarLoadError, setAvatarLoadError] = useState(false);
-  const supportPhone = "+79990000000";
-  const supportPhoneLabel = "+7 (929) 777-66-66";
-  const supportTelegram = "LP_detailing7";
 
   const handleLogout = async () => {
     Alert.alert("Выход", "Вы уверены, что хотите выйти из аккаунта?", [
@@ -35,8 +55,11 @@ export default function ProfileScreen() {
         text: "Выйти",
         style: "destructive",
         onPress: async () => {
-          await logout();
-          router.replace("/login");
+          try {
+            await logout();
+          } finally {
+            router.replace("/");
+          }
         },
       },
     ]);
@@ -62,7 +85,7 @@ export default function ProfileScreen() {
                 headers: { Authorization: `Bearer ${token}` },
               });
               await logout();
-              router.replace("/login");
+              router.replace("/");
             } catch (error: any) {
               const message =
                 error?.response?.data?.message ||
@@ -75,88 +98,122 @@ export default function ProfileScreen() {
     );
   };
 
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.safeContainer} edges={["top"]}>
+        <ScrollView style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.avatar}>
+              <Ionicons name="person-outline" size={50} color="#000000" />
+            </View>
+            <Text style={styles.name}>Гость</Text>
+            <Text style={styles.phone}>
+              Войдите, чтобы управлять автомобилями и записями
+            </Text>
+          </View>
+
+          <View style={styles.menu}>
+            <TouchableOpacity
+              style={styles.loginButton}
+              onPress={() => router.push("/login")}
+            >
+              <Ionicons
+                name="log-in-outline"
+                size={20}
+                color="#000000"
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.loginButtonText}>Войти в аккаунт</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => router.push("/services-selection")}
+            >
+              <View style={styles.menuIconContainer}>
+                <Ionicons name="pricetags-outline" size={22} color="#000000" />
+              </View>
+              <Text style={styles.menuText}>Услуги и цены</Text>
+            </TouchableOpacity>
+
+            <SupportCard />
+          </View>
+
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeContainer} edges={["top"]}>
       <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-          {user?.photoUrl && !avatarLoadError ? (
-            <Image
-              source={{ uri: user.photoUrl }}
-              style={styles.avatarImage}
-              onError={() => setAvatarLoadError(true)}
-            />
-          ) : (
-            <Ionicons name="person-outline" size={50} color="#000000" />
-          )}
-        </View>
-        <Text style={styles.name}>{user?.name || user?.username || "Пользователь"}</Text>
-        {user?.phone && <Text style={styles.phone}>{user.phone}</Text>}
-      </View>
-
-      <View style={styles.menu}>
-        <Link href={{ pathname: "/cars", params: { from: "/profile" } }} asChild>
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuIconContainer}>
-              <Ionicons name="car-sport-outline" size={22} color="#000000" />
-            </View>
-            <Text style={styles.menuText}>Ваши автомобили</Text>
-          </TouchableOpacity>
-        </Link>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons
-              name="information-circle-outline"
-              size={22}
-              color="#000000"
-            />
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            {user?.photoUrl && !avatarLoadError ? (
+              <Image
+                source={{ uri: user.photoUrl }}
+                style={styles.avatarImage}
+                onError={() => setAvatarLoadError(true)}
+              />
+            ) : (
+              <Ionicons name="person-outline" size={50} color="#000000" />
+            )}
           </View>
-          <Text style={styles.menuText}>О приложении</Text>
-        </TouchableOpacity>
+          <Text style={styles.name}>
+            {user?.name || user?.username || "Пользователь"}
+          </Text>
+          {user?.phone && <Text style={styles.phone}>{user.phone}</Text>}
+        </View>
 
-        <View style={styles.supportCard}>
-          <Text style={styles.supportTitle}>Поддержка</Text>
+        <View style={styles.menu}>
+          <Link href={{ pathname: "/cars", params: { from: "/profile" } }} asChild>
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuIconContainer}>
+                <Ionicons name="car-sport-outline" size={22} color="#000000" />
+              </View>
+              <Text style={styles.menuText}>Ваши автомобили</Text>
+            </TouchableOpacity>
+          </Link>
+
           <TouchableOpacity
-            onPress={() => Linking.openURL(`tel:${supportPhone}`)}
-            activeOpacity={0.7}
+            style={styles.menuItem}
+            onPress={() => router.push("/services-selection")}
           >
-            <Text style={styles.supportLink}>Телефон: {supportPhoneLabel}</Text>
+            <View style={styles.menuIconContainer}>
+              <Ionicons name="pricetags-outline" size={22} color="#000000" />
+            </View>
+            <Text style={styles.menuText}>Услуги и цены</Text>
           </TouchableOpacity>
+
+          <SupportCard />
+
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons
+              name="log-out-outline"
+              size={20}
+              color="#000000"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.logoutButtonText}>Выйти из аккаунта</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
-            onPress={() => Linking.openURL(`https://t.me/${supportTelegram}`)}
-            activeOpacity={0.7}
+            style={styles.deleteProfileButton}
+            onPress={handleDeleteProfile}
           >
-            <Text style={styles.supportLink}>Telegram: @{supportTelegram}</Text>
+            <Ionicons
+              name="trash-outline"
+              size={20}
+              color="#FF3B30"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.deleteProfileButtonText}>Удалить профиль</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons
-            name="log-out-outline"
-            size={20}
-            color="#000000"
-            style={{ marginRight: 8 }}
-          />
-          <Text style={styles.logoutButtonText}>Выйти из аккаунта</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.deleteProfileButton}
-          onPress={handleDeleteProfile}
-        >
-          <Ionicons
-            name="trash-outline"
-            size={20}
-            color="#FF3B30"
-            style={{ marginRight: 8 }}
-          />
-          <Text style={styles.deleteProfileButtonText}>Удалить профиль</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.bottomPadding} />
-    </ScrollView>
+        <View style={styles.bottomPadding} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -190,18 +247,18 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  avatarText: {
-    fontSize: 50,
-  },
   name: {
     fontSize: 24,
     fontWeight: "600",
     color: "#ffffff",
     marginBottom: 4,
+    textAlign: "center",
   },
   phone: {
     fontSize: 14,
     color: "#cccccc",
+    textAlign: "center",
+    paddingHorizontal: 16,
   },
   menu: {
     padding: 16,
@@ -246,15 +303,24 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 8,
   },
-  supportText: {
-    fontSize: 14,
-    color: "#cccccc",
-    marginBottom: 4,
-  },
   supportLink: {
     fontSize: 14,
     color: Colors.warning,
     marginBottom: 8,
+  },
+  loginButton: {
+    backgroundColor: "#D9E57F",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  loginButtonText: {
+    color: "#000000",
+    fontSize: 16,
+    fontWeight: "600",
   },
   logoutButton: {
     backgroundColor: "#f5f5f5",

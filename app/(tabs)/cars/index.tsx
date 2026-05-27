@@ -11,11 +11,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useCars } from "../../context/CarsContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useAuth } from "../../context/AuthContext";
+import { SignInPrompt } from "../../../components/SignInPrompt";
 
 export default function CarsListScreen() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const { cars, selectedCar, selectCar, removeCar } = useCars();
+  const { isAuthenticated } = useAuth();
 
   const getCarPlateLabel = (car: { hasNoPlate: boolean; licensePlate: string | null }) =>
     car.hasNoPlate || !car.licensePlate ? "Без номера" : car.licensePlate;
@@ -58,6 +61,25 @@ export default function CarsListScreen() {
       }
     },
   });
+
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleBackPress}>
+            <Ionicons name="arrow-back" size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Мои автомобили</Text>
+          <View style={styles.headerButtons} />
+        </View>
+        <SignInPrompt
+          title="Войдите в аккаунт"
+          description="Список автомобилей доступен после входа."
+          icon="car-sport-outline"
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView

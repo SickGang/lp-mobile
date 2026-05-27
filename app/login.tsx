@@ -14,6 +14,7 @@ import {
   Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import axios from "axios";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { useAuth } from "./context/AuthContext";
@@ -189,16 +190,28 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={() => router.replace("/")}
+          disabled={loading}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.skipButtonText}>Продолжить без входа</Text>
+        </TouchableOpacity>
+      </View>
+
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.content}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
           <View style={styles.logoContainer}>
             <Image
               source={require("../assets/logo.png")}
@@ -334,9 +347,10 @@ export default function LoginScreen() {
               </>
             )}
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -348,15 +362,34 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  keyboardView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
+  },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 8,
   },
   content: {
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 24,
     paddingBottom: 40,
+  },
+  skipButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  skipButtonText: {
+    color: Colors.text.tertiary,
+    fontSize: 15,
+    fontWeight: "500",
   },
   logoContainer: {
     alignItems: "center",

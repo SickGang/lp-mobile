@@ -40,7 +40,7 @@ export function CarsProvider({ children }: { children: React.ReactNode }) {
   const [cars, setCars] = useState<Car[]>([]);
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [loading, setLoading] = useState(true);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
     loadCars();
@@ -77,10 +77,12 @@ export function CarsProvider({ children }: { children: React.ReactNode }) {
       setCars(response.data);
     } catch (error) {
       console.error("Error loading cars:", error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        // Токен недействителен
-        await AsyncStorage.removeItem("auth_token");
+      if (
+        axios.isAxiosError(error) &&
+        (error.response?.status === 401 || error.response?.status === 404)
+      ) {
         setCars([]);
+        await logout();
       }
     } finally {
       setLoading(false);
