@@ -63,6 +63,7 @@ export default function AddCarScreen() {
   const [brandId, setBrandId] = useState("");
   const [model, setModel] = useState("");
   const [modelId, setModelId] = useState("");
+  const [catalogClass, setCatalogClass] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
   const [hasNoPlate, setHasNoPlate] = useState(false);
   const [searchBrand, setSearchBrand] = useState("");
@@ -174,6 +175,7 @@ export default function AddCarScreen() {
     setBrandId(selectedBrand.id);
     setModel("");
     setModelId("");
+    setCatalogClass("");
     setListPicker("none");
     setSearchBrand("");
   };
@@ -181,6 +183,7 @@ export default function AddCarScreen() {
   const handleModelSelect = (selectedModel: CarModel) => {
     setModel(selectedModel.name);
     setModelId(selectedModel.id);
+    setCatalogClass(selectedModel.class || "");
     setListPicker("none");
     setSearchModel("");
   };
@@ -208,6 +211,8 @@ export default function AddCarScreen() {
     const newCar = {
       brand: brand.trim(),
       model: model.trim(),
+      catalogModelId: modelId || undefined,
+      catalogClass: catalogClass || undefined,
       hasNoPlate,
       licensePlate: hasNoPlate ? undefined : licensePlate.trim(),
     };

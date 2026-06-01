@@ -47,7 +47,7 @@
     },
     "extra": {
       "apiUrl": "https://sickgang-lp-api-b7b5.twc1.net",
-      "localApiUrl": "http://172.16.20.132:3000",
+      "localApiUrl": "http://192.168.0.105:3000",
       "router": {},
       "eas": {
         "projectId": "76cab969-007a-437b-8c5e-2b5458a78159"

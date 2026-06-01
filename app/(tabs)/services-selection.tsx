@@ -19,6 +19,10 @@ import { promptSignIn } from "../../lib/promptSignIn";
 import axios from "axios";
 import { useCallback } from "react";
 import { API_URL } from "../../constants/api";
+import {
+  getCarBrandModelLabel,
+  getCarLicensePlateSubtitle,
+} from "../../lib/carDisplay";
 
 interface Service {
   id: number;
@@ -46,6 +50,31 @@ interface ServiceCategoryRow {
 /** Одна нейтральная иконка для любой категории — названия только из БД. */
 const CATEGORY_LIST_ICON = "pricetag-outline" as const;
 
+type CarLabelSource = {
+  brand: string;
+  model: string;
+  licensePlate?: string | null;
+  hasNoPlate: boolean;
+};
+
+function CarSelectorTexts({
+  car,
+  titleStyle,
+  subtitleStyle,
+}: {
+  car: CarLabelSource;
+  titleStyle: object;
+  subtitleStyle: object;
+}) {
+  const plate = getCarLicensePlateSubtitle(car);
+  return (
+    <>
+      <Text style={titleStyle}>{getCarBrandModelLabel(car)}</Text>
+      {plate ? <Text style={subtitleStyle}>{plate}</Text> : null}
+    </>
+  );
+}
+
 export default function ServicesSelectionScreen() {
   const router = useRouter();
   const { selectedCar, cars, selectCar } = useCars();
@@ -56,13 +85,14 @@ export default function ServicesSelectionScreen() {
 
   const [categories, setCategories] = useState<Category[]>([]);
 
-  const getCarDisplayLabel = (car: { brand: string; model: string }) =>
-    [car.brand, car.model].filter(Boolean).join(" ") || "Автомобиль";
 
-  // Загружаем услуги из API при монтировании
   useEffect(() => {
-    loadServices();
-  }, []);
+    if (selectedCar?.id) {
+      void loadServices(selectedCar.id);
+    } else {
+      void loadServices();
+    }
+  }, [selectedCar?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -76,12 +106,15 @@ export default function ServicesSelectionScreen() {
     }, [setSelectedServices]),
   );
 
-  const loadServices = async () => {
+  const loadServices = async (carId?: number) => {
     try {
       setLoading(true);
+      const servicesUrl = carId
+        ? `${API_URL}/services?carId=${carId}`
+        : `${API_URL}/services`;
       const [categoriesResponse, servicesResponse] = await Promise.all([
         axios.get<ServiceCategoryRow[]>(`${API_URL}/services/categories`),
-        axios.get<any[]>(`${API_URL}/services`),
+        axios.get<any[]>(servicesUrl),
       ]);
 
       const dbCategories: ServiceCategoryRow[] = Array.isArray(categoriesResponse.data)
@@ -93,10 +126,16 @@ export default function ServicesSelectionScreen() {
       for (const s of rows) {
         const catName = s?.category;
         if (typeof catName !== "string" || !catName) continue;
+        const priceKopeks =
+          typeof s.resolvedPrice === "number"
+            ? s.resolvedPrice
+            : typeof s.price === "number"
+              ? s.price
+              : 0;
         const svc: Service = {
           id: s.id,
           name: s.name,
-          price: typeof s.price === "number" ? s.price / 100 : 0,
+          price: priceKopeks / 100,
           category: catName,
           description: s.description ?? "",
           selected: false,
@@ -252,9 +291,17 @@ export default function ServicesSelectionScreen() {
         onPress={handleCarSelectorPress}
       >
         <Ionicons name="car-sport" size={24} color="#ffffff" />
-        <Text style={styles.carInfoText}>
-          {selectedCar ? getCarDisplayLabel(selectedCar) : "Выберите автомобиль"}
-        </Text>
+        <View style={styles.carInfoTextWrap}>
+          {selectedCar ? (
+            <CarSelectorTexts
+              car={selectedCar}
+              titleStyle={styles.carInfoText}
+              subtitleStyle={styles.carInfoSubtext}
+            />
+          ) : (
+            <Text style={styles.carInfoText}>Выберите автомобиль</Text>
+          )}
+        </View>
         <Ionicons name="chevron-down" size={24} color="#ffffff" />
       </TouchableOpacity>
 
@@ -381,12 +428,11 @@ export default function ServicesSelectionScreen() {
                     <View style={styles.carItemInfo}>
                       <Ionicons name="car-sport" size={24} color="#ffffff" />
                       <View style={styles.carItemDetails}>
-                        <Text style={styles.carItemPlate}>
-                          {getCarDisplayLabel(car)}
-                        </Text>
-                        {!car.hasNoPlate && car.licensePlate ? (
-                          <Text style={styles.carItemModel}>{car.licensePlate}</Text>
-                        ) : null}
+                        <CarSelectorTexts
+                          car={car}
+                          titleStyle={styles.carItemTitle}
+                          subtitleStyle={styles.carItemSubtext}
+                        />
                       </View>
                     </View>
                     {selectedCar?.id === car.id && (
@@ -465,12 +511,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  carInfoText: {
+  carInfoTextWrap: {
     flex: 1,
+    marginLeft: 12,
+  },
+  carInfoText: {
     fontSize: 18,
     color: "#ffffff",
     fontWeight: "600",
-    marginLeft: 12,
+  },
+  carInfoSubtext: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
   },
   content: {
     flex: 1,
@@ -691,15 +744,15 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
   },
-  carItemPlate: {
+  carItemTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: "#ffffff",
-    marginBottom: 4,
   },
-  carItemModel: {
+  carItemSubtext: {
     fontSize: 14,
     color: "#A0A0A0",
+    marginTop: 2,
   },
   addCarButton: {
     flexDirection: "row",

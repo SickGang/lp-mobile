@@ -12,6 +12,10 @@ export interface Car {
   model: string;
   licensePlate: string | null;
   hasNoPlate: boolean;
+  catalogModelId?: string | null;
+  catalogClass?: string | null;
+  pricingTier?: string | null;
+  pricingTierLabel?: string | null;
   userId?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -20,6 +24,8 @@ export interface Car {
 export interface CreateCarInput {
   brand: string;
   model: string;
+  catalogModelId?: string;
+  catalogClass?: string;
   hasNoPlate: boolean;
   licensePlate?: string;
 }
