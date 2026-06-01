@@ -19,6 +19,7 @@
       "usesAppleSignIn": true,
       "buildNumber": "3",
       "infoPlist": {
+        "LSApplicationQueriesSchemes": ["tel", "telprompt"],
         "NSCalendarsUsageDescription": "Разрешите доступ к календарю, чтобы добавлять напоминания о записи.",
         "NSCalendarsFullAccessUsageDescription": "Разрешите полный доступ к календарю, чтобы добавлять напоминания о записи.",
         "NSCalendarsWriteOnlyAccessUsageDescription": "Разрешите доступ к записи в календарь, чтобы создавать напоминания о записи.",
