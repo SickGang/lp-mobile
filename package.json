@@ -12,7 +12,11 @@
     "ios:setup": "node setup-ios.js",
     "ios:test": "node setup-ios.js && expo start --offline",
     "web": "expo start --web",
-    "api:types": "openapi-typescript ../lp-api/openapi.json -o ./app/generated/api.ts"
+    "api:types": "openapi-typescript ../lp-api/openapi.json -o ./app/generated/api.ts",
+    "build:ios": "node ./node_modules/eas-cli/bin/run build --platform ios --profile production",
+    "build:android": "node ./node_modules/eas-cli/bin/run build --platform android --profile production",
+    "build:all": "node ./node_modules/eas-cli/bin/run build --platform all --profile production",
+    "submit:ios": "node ./node_modules/eas-cli/bin/run submit --platform ios --profile production"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -44,6 +48,7 @@
     "@babel/core": "^7.26.0",
     "@types/react": "~19.1.10",
     "@types/react-native": "^0.73.0",
+    "eas-cli": "^18.7.0",
     "openapi-typescript": "^7.4.4",
     "typescript": "^5.3.3"
   },

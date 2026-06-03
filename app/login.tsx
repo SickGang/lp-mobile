@@ -11,6 +11,7 @@ import {
   Image,
   ScrollView,
   Linking,
+  AppState,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -91,10 +92,27 @@ export default function LoginScreen() {
   };
 
   const getErrorMessage = (error: unknown, fallback: string): string => {
-    const err = error as { response?: { data?: { message?: string | string[] } } };
-    const raw = err.response?.data?.message;
-    if (Array.isArray(raw)) return raw.join(", ");
-    return raw || fallback;
+    if (axios.isAxiosError(error)) {
+      const raw = error.response?.data as
+        | { message?: string | string[] }
+        | undefined;
+      const msg = raw?.message;
+      if (Array.isArray(msg)) return msg.join(", ");
+      if (typeof msg === "string" && msg.length > 0) return msg;
+      if (error.response?.status) {
+        return `${fallback} (HTTP ${error.response.status})`;
+      }
+      if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+        return "Сервер не ответил вовремя. Проверьте интернет и попробуйте снова.";
+      }
+      if (!error.response) {
+        return "Нет связи с сервером. Проверьте интернет.";
+      }
+    }
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+    return fallback;
   };
 
   const completeLogin = async (token: string, userData: unknown) => {
@@ -143,9 +161,17 @@ export default function LoginScreen() {
 
       return false;
     } catch (error: unknown) {
-      setPolling(false);
-      Alert.alert("Ошибка", getErrorMessage(error, "Не удалось проверить звонок"));
-      return true;
+      const message = getErrorMessage(error, "Не удалось проверить звонок");
+      const isRetryable =
+        axios.isAxiosError(error) &&
+        (!error.response ||
+          error.response.status >= 500 ||
+          error.code === "ECONNABORTED");
+      if (!isRetryable) {
+        setPolling(false);
+        Alert.alert("Ошибка", message);
+      }
+      return !isRetryable;
     } finally {
       pollInFlight.current = false;
     }
@@ -156,11 +182,22 @@ export default function LoginScreen() {
       return;
     }
 
+    void verifyCall();
+
     const interval = setInterval(() => {
       void verifyCall();
     }, CALL_POLL_INTERVAL_MS);
 
-    return () => clearInterval(interval);
+    const appStateSub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void verifyCall();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      appStateSub.remove();
+    };
   }, [polling, checkId, verifyCall]);
 
   const handleStartCallAuth = async () => {
@@ -299,24 +336,34 @@ export default function LoginScreen() {
                     <Text style={styles.loginButtonText}>Позвонить</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[styles.secondaryButton, loading && styles.buttonDisabled]}
-                    onPress={() => void verifyCall()}
-                    disabled={loading}
-                  >
-                    {polling ? (
-                      <View style={styles.pollingRow}>
-                        <ActivityIndicator color={Colors.warning} size="small" />
-                        <Text style={styles.secondaryButtonText}>
-                          Ожидаем звонок…
-                        </Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.secondaryButtonText}>
-                        Проверить вручную
+                  {polling ? (
+                    <View style={styles.callConfirmBox}>
+                      <ActivityIndicator
+                        size="large"
+                        color={Colors.warning}
+                        style={styles.callConfirmSpinner}
+                      />
+                      <Text style={styles.callConfirmTitle}>
+                        Подтверждаем звонок
                       </Text>
-                    )}
-                  </TouchableOpacity>
+                      <Text style={styles.callConfirmSubtitle}>
+                        После сброса вход выполнится автоматически
+                      </Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.secondaryButton, loading && styles.buttonDisabled]}
+                      onPress={() => {
+                        setPolling(true);
+                        void verifyCall();
+                      }}
+                      disabled={loading}
+                    >
+                      <Text style={styles.secondaryButtonText}>
+                        Повторить проверку
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
                   <TouchableOpacity
                     style={styles.resendButton}
@@ -426,6 +473,31 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 20,
   },
+  callConfirmBox: {
+    backgroundColor: Colors.input.background,
+    borderRadius: 12,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 4,
+  },
+  callConfirmSpinner: {
+    marginBottom: 16,
+  },
+  callConfirmTitle: {
+    color: Colors.text.primary,
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  callConfirmSubtitle: {
+    color: Colors.text.tertiary,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+  },
   inputContainer: {
     marginBottom: 24,
   },
@@ -477,11 +549,6 @@ const styles = StyleSheet.create({
     color: Colors.warning,
     fontSize: 16,
     fontWeight: "500",
-  },
-  pollingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
   },
   buttonDisabled: {
     opacity: 0.6,
