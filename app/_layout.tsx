@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CarsProvider } from "./context/CarsContext";
 import { BookingProvider } from "./context/BookingContext";
 import { useEffect } from "react";
+import { useEASUpdates } from "../lib/useEASUpdates";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,8 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  useEASUpdates();
+
   return (
     <AuthProvider>
       <CarsProvider>

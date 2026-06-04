@@ -16,7 +16,9 @@
     "build:ios": "node ./node_modules/eas-cli/bin/run build --platform ios --profile production",
     "build:android": "node ./node_modules/eas-cli/bin/run build --platform android --profile production",
     "build:all": "node ./node_modules/eas-cli/bin/run build --platform all --profile production",
-    "submit:ios": "node ./node_modules/eas-cli/bin/run submit --platform ios --profile production"
+    "submit:ios": "node ./node_modules/eas-cli/bin/run submit --platform ios --profile production",
+    "update:production": "node ./node_modules/eas-cli/bin/run update --channel production",
+    "update:preview": "node ./node_modules/eas-cli/bin/run update --channel preview"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -35,6 +37,7 @@
     "expo-notifications": "~0.32.16",
     "expo-router": "~6.0.22",
     "expo-status-bar": "~3.0.9",
+    "expo-updates": "~29.0.18",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
