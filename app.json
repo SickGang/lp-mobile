@@ -3,7 +3,9 @@
     "name": "LP Detailing",
     "slug": "lp-detailing",
     "version": "1.0.3",
-    "runtimeVersion": "1.0.3",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/logo.jpg",
@@ -12,6 +14,12 @@
       "backgroundColor": "#4A90E2"
     },
     "assetBundlePatterns": ["**/*"],
+    "updates": {
+      "url": "https://u.expo.dev/76cab969-007a-437b-8c5e-2b5458a78159",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "ios": {
       "icon": "./assets/logo.jpg",
       "supportsTablet": true,
